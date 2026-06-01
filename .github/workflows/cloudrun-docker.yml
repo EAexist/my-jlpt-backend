@@ -1,0 +1,70 @@
+name: Build and Deploy to Cloud Run
+
+on:
+  push:
+    branches:
+      - main
+      - develop
+  workflow_dispatch:
+    inputs:
+      target_env:
+        description: 'Target Environment Override (For manual testing)'
+        required: true
+        default: 'development'
+        type: choice
+        options:
+          - development
+          - production
+
+jobs:
+  deploy:
+    environment: >-
+      ${{ github.event_name == 'workflow_dispatch' 
+          && github.event.inputs.target_env 
+          || (github.ref_name == 'main' && 'production' || 'development') }}
+    permissions:
+      contents: 'read'
+      id-token: 'write'
+
+    runs-on: ubuntu-latest
+    
+    # Dynamically set environment variables based on the Git branch
+    # env:
+    #   PROJECT_ID: ${{ github.ref_name == 'main' && 'my-jlpt-497419' || 'my-jlpt-dev' }}
+    #   GAR_LOCATION: 'asia-northeast3' # Seoul (or asia-northeast1 for Tokyo)
+    #   REPOSITORY: 'my-jlpt-docker'
+    #   SERVICE: 'my-jlpt-be'
+    #   REGION: 'asia-northeast3'
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Google Auth
+        id: auth
+        uses: google-github-actions/auth@v3
+        with:
+          project_id: ${{ vars.PROJECT_ID }}
+          workload_identity_provider: ${{ secrets.WIF_PROVIDER }}
+
+      - name: Docker Auth
+        id: docker-auth
+        uses: docker/login-action@v4
+        with:
+          username: 'oauth2accesstoken'
+          password: '${{ steps.auth.outputs.access_token }}'
+          registry: '${{ vars.GAR_LOCATION }}-docker.pkg.dev'
+
+      - name: Build and Push Container
+        run: |-
+          TAG="${{ vars.GAR_LOCATION }}-docker.pkg.dev/${{ vars.PROJECT_ID }}/${{ vars.REPOSITORY }}/${{ vars.SERVICE }}:${{ github.sha }}"
+          docker build -t "$TAG" ./
+          docker push "$TAG"
+
+      - name: Deploy to Cloud Run
+        id: deploy
+        uses: google-github-actions/deploy-cloudrun@v3
+        with:
+          service: ${{ vars.SERVICE }}
+          region: ${{ vars.REGION }}
+          image: ${{ vars.GAR_LOCATION }}-docker.pkg.dev/${{ vars.PROJECT_ID }}/${{ vars.REPOSITORY }}/${{ vars.SERVICE }}:${{ github.sha }}

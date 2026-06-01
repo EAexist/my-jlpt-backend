@@ -1,0 +1,7 @@
+# https://docs.nestjs.com/deployment#dockerizing-your-application
+
+node_modules
+dist
+*.log
+*.md
+.git
