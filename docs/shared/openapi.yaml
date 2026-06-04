@@ -4,11 +4,11 @@ info:
   version: "1.0.0"
   description: |
     Backend API for my-jlpt.
-    Japanese text input → AI-powered JLPT learning content generator.
+    Japanese text input → Asynchronous AI-powered JLPT learning content generator.
 
     ## Auth
     All protected endpoints require: `Authorization: Bearer <jwt>`
-    JWT is issued after Google OAuth 2.0 callback.
+    The frontend manages OAuth via Auth.js and synchronizes sessions via `/auth/sync`.
 
     ## Errors
     All error responses follow the shape: `{ "detail": "string" }`
@@ -23,9 +23,9 @@ tags:
   - name: health
     description: Service health check
   - name: auth
-    description: Google OAuth 2.0 login and session
+    description: User identity synchronization and session profiles
   - name: content
-    description: JLPT analysis content — create, list, retrieve, delete
+    description: JLPT analysis content orchestration and ingestion
 
 paths:
 
@@ -51,36 +51,46 @@ paths:
 
   # --- Auth -----------------------------------------------------------------
 
-  /auth/google:
-    get:
-      operationId: googleOAuthRedirect
+  /auth/sync:
+    post:
+      operationId: syncUserSession
       tags: [auth]
-      summary: Redirect browser to Google OAuth consent screen
+      summary: Idempotent session upsert triggered by frontend OAuth callback
       security: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [provider, providerAccountId, email, display_name]
+              properties:
+                provider:
+                  type: string
+                  example: google
+                providerAccountId:
+                  type: string
+                  example: "1234567890"
+                email:
+                  type: string
+                  format: email
+                  nullable: true
+                display_name:
+                  type: string
+                  example: "Hong Gil Dong"
+                avatar_url:
+                  type: string
+                  format: uri
+                  nullable: true
       responses:
-        "302":
-          description: Redirect to Google consent URL
-
-  /auth/google/callback:
-    get:
-      operationId: googleOAuthCallback
-      tags: [auth]
-      summary: |
-        Google redirects here with ?code=.
-        Backend exchanges code, upserts user, issues JWT,
-        then redirects to frontend with token.
-      security: []
-      parameters:
-        - name: code
-          in: query
-          required: true
-          schema:
-            type: string
-      responses:
-        "302":
-          description: Redirect to {FRONTEND_URL}/auth/callback?access_token=<jwt>
+        "200":
+          description: Identity synchronized successfully. Returns session details.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/User"
         "400":
-          description: Missing or invalid code
+          description: Invalid payload configuration
           content:
             application/json:
               schema:
@@ -95,7 +105,7 @@ paths:
         - bearerAuth: []
       responses:
         "200":
-          description: Current user
+          description: Current user records matching the verified session
           content:
             application/json:
               schema:
@@ -109,9 +119,7 @@ paths:
     post:
       operationId: createContent
       tags: [content]
-      summary: |
-        Analyze Japanese text via LLM and persist the result.
-        LLM call is server-side only — client never calls LLM directly.
+      summary: Ingest text payload and dispatch an asynchronous Cloud Task processor
       security:
         - bearerAuth: []
       requestBody:
@@ -121,22 +129,21 @@ paths:
             schema:
               $ref: "#/components/schemas/CreateContentRequest"
       responses:
-        "201":
-          description: Analysis complete and content saved
+        "202":
+          description: Ingestion job accepted. Client should poll the returned job status.
           content:
             application/json:
               schema:
-                $ref: "#/components/schemas/ContentFull"
+                type: object
+                required: [job_id]
+                properties:
+                  job_id:
+                    type: string
+                    format: uuid
         "401":
           $ref: "#/components/responses/Unauthorized"
         "422":
-          description: text is empty or exceeds max length
-          content:
-            application/json:
-              schema:
-                $ref: "#/components/schemas/Error"
-        "504":
-          description: LLM API timed out
+          description: Input constraints violated
           content:
             application/json:
               schema:
@@ -145,15 +152,12 @@ paths:
     get:
       operationId: listContent
       tags: [content]
-      summary: |
-        List all content owned by the authenticated user.
-        Ordered by created_at descending.
-        Does NOT include sentences or vocabulary — list view only.
+      summary: List all content entities owned by the authenticated user
       security:
         - bearerAuth: []
       responses:
         "200":
-          description: List of content summaries
+          description: Array of lightweight content metadata elements
           content:
             application/json:
               schema:
@@ -167,18 +171,18 @@ paths:
     get:
       operationId: getContent
       tags: [content]
-      summary: Retrieve full content for re-opening a saved study set
+      summary: Poll status milestones or retrieve full study content payloads
       security:
         - bearerAuth: []
       parameters:
         - $ref: "#/components/parameters/id"
       responses:
         "200":
-          description: Full content object including sentences and vocabulary
+          description: Combined job execution status wrapper and processed content details
           content:
             application/json:
               schema:
-                $ref: "#/components/schemas/ContentFull"
+                $ref: "#/components/schemas/JobStatusResponse"
         "401":
           $ref: "#/components/responses/Unauthorized"
         "403":
@@ -189,14 +193,14 @@ paths:
     delete:
       operationId: deleteContent
       tags: [content]
-      summary: Delete content. Owner only.
+      summary: Purge saved study content records
       security:
         - bearerAuth: []
       parameters:
         - $ref: "#/components/parameters/id"
       responses:
         "204":
-          description: Deleted successfully
+          description: Target resource successfully purged
         "401":
           $ref: "#/components/responses/Unauthorized"
         "403":
@@ -228,13 +232,14 @@ components:
 
     Error:
       type: object
+      required: [detail]
       properties:
         detail:
           type: string
-      required: [detail]
 
     User:
       type: object
+      required: [id, email, display_name]
       properties:
         id:
           type: string
@@ -242,12 +247,13 @@ components:
         email:
           type: string
           format: email
+          nullable: true
         display_name:
           type: string
         avatar_url:
           type: string
+          format: uri
           nullable: true
-      required: [id, email, display_name]
 
     JLPTLevel:
       type: string
@@ -255,67 +261,53 @@ components:
 
     LevelDistribution:
       type: object
-      description: Count of words/sentences per JLPT level
+      required: [N1, N2, N3, N4, N5]
       properties:
         N1: { type: integer }
         N2: { type: integer }
         N3: { type: integer }
         N4: { type: integer }
         N5: { type: integer }
-      required: [N1, N2, N3, N4, N5]
 
     Sentence:
       type: object
+      required: [text, translation, level, grammar_points, similar_patterns]
       properties:
         text:
           type: string
-          description: Original Japanese sentence
         translation:
           type: string
-          description: Korean or English translation
         level:
           $ref: "#/components/schemas/JLPTLevel"
         grammar_points:
           type: array
-          items:
-            type: string
-          description: Grammar patterns identified in the sentence
+          items: { type: string }
         similar_patterns:
           type: array
-          items:
-            type: string
-          description: JLPT-frequent patterns similar to this sentence
-      required: [text, translation, level, grammar_points, similar_patterns]
+          items: { type: string }
 
     VocabularyItem:
       type: object
+      required: [word, reading, level, translation, synonyms, example_phrases]
       properties:
         word:
           type: string
-          description: The Japanese word (kanji form if applicable)
         reading:
           type: string
-          description: Hiragana/katakana reading
         level:
           $ref: "#/components/schemas/JLPTLevel"
         translation:
           type: string
-          description: Korean or English meaning
         synonyms:
           type: array
-          items:
-            type: string
-          description: JLPT-frequent synonyms
+          items: { type: string }
         example_phrases:
           type: array
-          items:
-            type: string
-          description: Example phrases using the word
-      required: [word, reading, level, translation, synonyms, example_phrases]
+          items: { type: string }
 
     ContentSummary:
       type: object
-      description: Lightweight content object for list view — no sentences or vocabulary
+      required: [id, title, input_text, created_at, overall_level, level_distribution]
       properties:
         id:
           type: string
@@ -331,12 +323,12 @@ components:
           $ref: "#/components/schemas/JLPTLevel"
         level_distribution:
           $ref: "#/components/schemas/LevelDistribution"
-      required: [id, title, input_text, created_at, overall_level, level_distribution]
 
     ContentFull:
       allOf:
         - $ref: "#/components/schemas/ContentSummary"
         - type: object
+          required: [sentences, vocabulary]
           properties:
             sentences:
               type: array
@@ -346,40 +338,66 @@ components:
               type: array
               items:
                 $ref: "#/components/schemas/VocabularyItem"
-          required: [sentences, vocabulary]
+
+    JobStatusResponse:
+      type: object
+      required: [job_id, status, progress]
+      properties:
+        job_id:
+          type: string
+          format: uuid
+        status:
+          type: string
+          enum: [pending, processing, completed, failed]
+        progress:
+          type: integer
+          description: Execution completeness tracking (16, 33, 66, 83, 100)
+          example: 33
+        error:
+          type: string
+          nullable: true
+          description: populated when status resolves to 'failed'
+        data:
+          $ref: "#/components/schemas/ContentFull"
+          nullable: true
+          description: populated only when status resolves to 'completed'
 
     CreateContentRequest:
       type: object
+      required: [text]
       properties:
         text:
           type: string
-          description: Japanese input text
           minLength: 1
           maxLength: 5000
         title:
           type: string
           nullable: true
-          description: Optional. Auto-generated from first line if omitted.
-      required: [text]
 
   responses:
     Unauthorized:
-      description: Missing or invalid JWT
+      description: Session missing or invalid verification token signature
       content:
         application/json:
+          schema:
+            $ref: "#/components/schemas/Error"
           example:
             detail: "Not authenticated"
 
     Forbidden:
-      description: Authenticated but not the owner of this resource
+      description: Resource request signature violates data isolation boundary controls
       content:
         application/json:
+          schema:
+            $ref: "#/components/schemas/Error"
           example:
             detail: "Access forbidden"
 
     NotFound:
-      description: Resource not found
+      description: Target asset key sequence not matching persistent indexes
       content:
         application/json:
+          schema:
+            $ref: "#/components/schemas/Error"
           example:
             detail: "Not found"
