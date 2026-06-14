@@ -1,0 +1,72 @@
+---
+version: 1.0.0
+description: shadcn/ui component selection guidelines
+tags: [shadcn, design, components]
+---
+
+# Skill: shadcn/ui Component Selection
+- Refer to `.agents/skills/shadcn/SKILL.md` > `## Component Selection` section for basic guidance.
+- For each choice of component, pick a second alternative component and compare which is more suitable for the requirement.
+- When making a choice, YOU MUST FIRST FIND AND READ the component documentation for the candidate components from following list.
+  - `.agents/skills/docs/shadcn/components/accordion.mdx`
+  - `.agents/skills/docs/shadcn/components/alert-dialog.mdx`
+  - `.agents/skills/docs/shadcn/components/alert.mdx`
+  - `.agents/skills/docs/shadcn/components/aspect-ratio.mdx`
+  - `.agents/skills/docs/shadcn/components/avatar.mdx`
+  - `.agents/skills/docs/shadcn/components/badge.mdx`
+  - `.agents/skills/docs/shadcn/components/breadcrumb.mdx`
+  - `.agents/skills/docs/shadcn/components/button-group.mdx`
+  - `.agents/skills/docs/shadcn/components/button.mdx`
+  - `.agents/skills/docs/shadcn/components/calendar.mdx`
+  - `.agents/skills/docs/shadcn/components/card.mdx`
+  - `.agents/skills/docs/shadcn/components/carousel.mdx`
+  - `.agents/skills/docs/shadcn/components/chart.mdx`
+  - `.agents/skills/docs/shadcn/components/checkbox.mdx`
+  - `.agents/skills/docs/shadcn/components/collapsible.mdx`
+  - `.agents/skills/docs/shadcn/components/combobox.mdx`
+  - `.agents/skills/docs/shadcn/components/command.mdx`
+  - `.agents/skills/docs/shadcn/components/context-menu.mdx`
+  - `.agents/skills/docs/shadcn/components/data-table.mdx`
+  - `.agents/skills/docs/shadcn/components/date-picker.mdx`
+  - `.agents/skills/docs/shadcn/components/dialog.mdx`
+  - `.agents/skills/docs/shadcn/components/direction.mdx`
+  - `.agents/skills/docs/shadcn/components/drawer.mdx`
+  - `.agents/skills/docs/shadcn/components/dropdown-menu.mdx`
+  - `.agents/skills/docs/shadcn/components/empty.mdx`
+  - `.agents/skills/docs/shadcn/components/field.mdx`
+  - `.agents/skills/docs/shadcn/components/hover-card.mdx`
+  - `.agents/skills/docs/shadcn/components/input-group.mdx`
+  - `.agents/skills/docs/shadcn/components/input-otp.mdx`
+  - `.agents/skills/docs/shadcn/components/input.mdx`
+  - `.agents/skills/docs/shadcn/components/item.mdx`
+  - `.agents/skills/docs/shadcn/components/kbd.mdx`
+  - `.agents/skills/docs/shadcn/components/label.mdx`
+  - `.agents/skills/docs/shadcn/components/menubar.mdx`
+  - `.agents/skills/docs/shadcn/components/meta.json`
+  - `.agents/skills/docs/shadcn/components/native-select.mdx`
+  - `.agents/skills/docs/shadcn/components/navigation-menu.mdx`
+  - `.agents/skills/docs/shadcn/components/pagination.mdx`
+  - `.agents/skills/docs/shadcn/components/popover.mdx`
+  - `.agents/skills/docs/shadcn/components/progress.mdx`
+  - `.agents/skills/docs/shadcn/components/radio-group.mdx`
+  - `.agents/skills/docs/shadcn/components/resizable.mdx`
+  - `.agents/skills/docs/shadcn/components/scroll-area.mdx`
+  - `.agents/skills/docs/shadcn/components/select.mdx`
+  - `.agents/skills/docs/shadcn/components/separator.mdx`
+  - `.agents/skills/docs/shadcn/components/sheet.mdx`
+  - `.agents/skills/docs/shadcn/components/sidebar.mdx`
+  - `.agents/skills/docs/shadcn/components/skeleton.mdx`
+  - `.agents/skills/docs/shadcn/components/slider.mdx`
+  - `.agents/skills/docs/shadcn/components/sonner.mdx`
+  - `.agents/skills/docs/shadcn/components/spinner.mdx`
+  - `.agents/skills/docs/shadcn/components/switch.mdx`
+  - `.agents/skills/docs/shadcn/components/table.mdx`
+  - `.agents/skills/docs/shadcn/components/tabs.mdx`
+  - `.agents/skills/docs/shadcn/components/textarea.mdx`
+  - `.agents/skills/docs/shadcn/components/toast.mdx`
+  - `.agents/skills/docs/shadcn/components/toggle-group.mdx`
+  - `.agents/skills/docs/shadcn/components/toggle.mdx`
+  - `.agents/skills/docs/shadcn/components/tooltip.mdx`
+  - `.agents/skills/docs/shadcn/components/typography.mdx`
+
+- Finally, select the most suitable component for each requirement.
