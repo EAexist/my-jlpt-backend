@@ -1,0 +1,24 @@
+name: Sync OpenAPI to Frontend
+
+on:
+  push:
+    branches:
+      - temp/test-openapi-ci
+    paths:
+      - 'generated/openapi.json'
+
+jobs:
+  sync:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Trigger Frontend Sync
+        uses: peter-evans/repository-dispatch@v3
+        with:
+          token: ${{ secrets.OPENAPI_SYNC_PAT }}
+          repository: ${{ vars.FRONTEND_REPO }}
+          event-type: openapi-updated
+          client-payload: >-
+            {
+              "ref": "${{ github.ref_name }}",
+              "sha": "${{ github.sha }}"
+            }

@@ -1,0 +1,108 @@
+{
+  "openapi": "3.0.0",
+  "paths": {
+    "/": {
+      "get": {
+        "operationId": "AppController_getHello",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": ""
+          }
+        },
+        "tags": [
+          "App"
+        ]
+      }
+    },
+    "/health": {
+      "get": {
+        "operationId": "HealthController_get",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": ""
+          }
+        },
+        "tags": [
+          "Health"
+        ]
+      }
+    },
+    "/content": {
+      "post": {
+        "operationId": "ContentController_create",
+        "parameters": [],
+        "responses": {
+          "201": {
+            "description": ""
+          }
+        },
+        "tags": [
+          "Content"
+        ]
+      },
+      "get": {
+        "operationId": "ContentController_findAll",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": ""
+          }
+        },
+        "tags": [
+          "Content"
+        ]
+      }
+    },
+    "/content/{id}": {
+      "get": {
+        "operationId": "ContentController_findOne",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": ""
+          }
+        },
+        "tags": [
+          "Content"
+        ]
+      },
+      "patch": {
+        "operationId": "ContentController_update",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": ""
+          }
+        },
+        "tags": [
+          "Content"
+        ]
+      },
+      "delete": {
+        "operationId": "ContentController_remove",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": ""
+          }
+        },
+        "tags": [
+          "Content"
+        ]
+      }
+    }
+  },
+  "info": {
+    "title": "API Spec",
+    "description": "Auto-generated OpenAPI contract",
+    "version": "1.0",
+    "contact": {}
+  },
+  "tags": [],
+  "servers": [],
+  "components": {
+    "schemas": {}
+  }
+}
