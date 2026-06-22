@@ -1,0 +1,630 @@
+{
+    "openapi": "3.0.0",
+    "info": {
+        "title": "JLPT API",
+        "version": "1.0.0",
+        "description": "API specification for the JLPT learning platform."
+    },
+    "servers": [
+        {
+            "url": "/api/v1"
+        }
+    ],
+    "components": {
+        "securitySchemes": {
+            "bearer": {
+                "type": "http",
+                "scheme": "bearer",
+                "bearerFormat": "JWT"
+            }
+        },
+        "schemas": {
+            "ApiError": {
+                "type": "object",
+                "properties": {
+                    "detail": {
+                        "type": "string",
+                        "example": "Validation failed"
+                    }
+                },
+                "required": ["detail"]
+            },
+            "User": {
+                "type": "object",
+                "properties": {
+                    "id": { "type": "string", "format": "uuid" },
+                    "email": { "type": "string", "format": "email", "nullable": true },
+                    "name": { "type": "string", "nullable": true },
+                    "avatarUrl": { "type": "string", "format": "uri", "nullable": true }
+                },
+                "required": ["id", "email"]
+            },
+            "Group": {
+                "type": "object",
+                "properties": {
+                    "id": { "type": "string", "format": "uuid" },
+                    "name": { "type": "string" },
+                    "isDefault": {
+                        "type": "boolean",
+                        "description": "True for the system-created default group. Cannot be deleted or renamed."
+                    },
+                    "contentCount": { "type": "integer" }
+                },
+                "required": ["id", "name", "isDefault", "contentCount"]
+            },
+            "JLPTLevel": {
+                "type": "string",
+                "enum": ["N1", "N2", "N3", "N4", "N5"]
+            },
+            "LevelDistribution": {
+                "type": "object",
+                "properties": {
+                    "N1": { "type": "number" },
+                    "N2": { "type": "number" },
+                    "N3": { "type": "number" },
+                    "N4": { "type": "number" },
+                    "N5": { "type": "number" }
+                },
+                "required": ["N1", "N2", "N3", "N4", "N5"]
+            },
+            "GrammarExample": {
+                "type": "object",
+                "properties": {
+                    "japanese": { "type": "string" },
+                    "translation": { "type": "string" }
+                },
+                "required": ["japanese", "translation"]
+            },
+            "GrammarPoint": {
+                "type": "object",
+                "properties": {
+                    "name": {
+                        "type": "string",
+                        "description": "Human-readable pattern name, e.g. 〜てしまう"
+                    },
+                    "description": { "type": "string" },
+                    "examples": {
+                        "type": "array",
+                        "items": { "$ref": "#/components/schemas/GrammarExample" }
+                    }
+                },
+                "required": ["name", "description", "examples"]
+            },
+            "VocabularyItem": {
+                "type": "object",
+                "properties": {
+                    "word": { "type": "string" },
+                    "reading": { "type": "string" },
+                    "level": { "$ref": "#/components/schemas/JLPTLevel" },
+                    "translation": { "type": "string" },
+                    "synonyms": {
+                        "type": "array",
+                        "items": { "type": "string" }
+                    },
+                    "example_phrases": {
+                        "type": "array",
+                        "items": { "type": "string" }
+                    }
+                },
+                "required": ["word", "reading", "level", "translation", "synonyms", "example_phrases"]
+            },
+            "Sentence": {
+                "type": "object",
+                "properties": {
+                    "text": { "type": "string" },
+                    "translation": { "type": "string" },
+                    "level": { "$ref": "#/components/schemas/JLPTLevel" },
+                    "grammar_points": {
+                        "type": "array",
+                        "items": { "$ref": "#/components/schemas/GrammarPoint" }
+                    },
+                    "similar_patterns": {
+                        "type": "array",
+                        "items": { "type": "string" }
+                    }
+                },
+                "required": ["text", "translation", "level", "grammar_points", "similar_patterns"]
+            },
+            "BaseContent": {
+                "type": "object",
+                "properties": {
+                    "id": { "type": "string", "format": "uuid" },
+                    "status": {
+                        "type": "string",
+                        "enum": ["PENDING", "PROCESSING", "COMPLETED", "FAILED"]
+                    },
+                    "title": { "type": "string" },
+                    "groupId": { "type": "string", "format": "uuid" },
+                    "input_text": { "type": "string" },
+                    "created_at": { "type": "string", "format": "date-time" }
+                },
+                "required": ["id", "status", "title", "groupId", "input_text", "created_at"]
+            },
+            "ProcessingContent": {
+                "allOf": [
+                    { "$ref": "#/components/schemas/BaseContent" },
+                    {
+                        "type": "object",
+                        "properties": {
+                            "status": {
+                                "type": "string",
+                                "enum": ["PENDING", "PROCESSING"]
+                            },
+                            "progress": {
+                                "type": "integer",
+                                "minimum": 0,
+                                "maximum": 99,
+                                "description": "Worker execution progress percentage"
+                            },
+                            "current_step": {
+                                "type": "string",
+                                "nullable": true,
+                                "description": "Human-readable label of the currently executing pipeline step"
+                            },
+                            "estimated_completion_time": {
+                                "type": "string",
+                                "format": "date-time",
+                                "nullable": true
+                            }
+                        },
+                        "required": ["status", "progress"]
+                    }
+                ]
+            },
+            "FailedContent": {
+                "allOf": [
+                    { "$ref": "#/components/schemas/BaseContent" },
+                    {
+                        "type": "object",
+                        "properties": {
+                            "status": {
+                                "type": "string",
+                                "enum": ["FAILED"]
+                            },
+                            "error_message": { "type": "string" }
+                        },
+                        "required": ["status", "error_message"]
+                    }
+                ]
+            },
+            "CompletedContent": {
+                "allOf": [
+                    { "$ref": "#/components/schemas/BaseContent" },
+                    {
+                        "type": "object",
+                        "properties": {
+                            "status": {
+                                "type": "string",
+                                "enum": ["COMPLETED"]
+                            },
+                            "overall_level": { "$ref": "#/components/schemas/JLPTLevel" },
+                            "level_distribution": { "$ref": "#/components/schemas/LevelDistribution" },
+                            "sentences": {
+                                "type": "array",
+                                "items": { "$ref": "#/components/schemas/Sentence" }
+                            },
+                            "vocabulary": {
+                                "type": "array",
+                                "description": "Deduplicated union of all vocabulary items across all sentences",
+                                "items": { "$ref": "#/components/schemas/VocabularyItem" }
+                            }
+                        },
+                        "required": ["status", "overall_level", "level_distribution", "sentences", "vocabulary"]
+                    }
+                ]
+            },
+            "Content": {
+                "oneOf": [
+                    { "$ref": "#/components/schemas/ProcessingContent" },
+                    { "$ref": "#/components/schemas/FailedContent" },
+                    { "$ref": "#/components/schemas/CompletedContent" }
+                ],
+                "discriminator": {
+                    "propertyName": "status",
+                    "mapping": {
+                        "PENDING": "#/components/schemas/ProcessingContent",
+                        "PROCESSING": "#/components/schemas/ProcessingContent",
+                        "FAILED": "#/components/schemas/FailedContent",
+                        "COMPLETED": "#/components/schemas/CompletedContent"
+                    }
+                }
+            }
+        },
+        "responses": {
+            "Unauthorized": {
+                "description": "Session missing or invalid token signature",
+                "content": {
+                    "application/json": {
+                        "schema": { "$ref": "#/components/schemas/ApiError" }
+                    }
+                }
+            },
+            "Forbidden": {
+                "description": "Resource belongs to another user",
+                "content": {
+                    "application/json": {
+                        "schema": { "$ref": "#/components/schemas/ApiError" }
+                    }
+                }
+            },
+            "NotFound": {
+                "description": "Resource not found",
+                "content": {
+                    "application/json": {
+                        "schema": { "$ref": "#/components/schemas/ApiError" }
+                    }
+                }
+            },
+            "BadRequest": {
+                "description": "Validation or business rule violation",
+                "content": {
+                    "application/json": {
+                        "schema": { "$ref": "#/components/schemas/ApiError" }
+                    }
+                }
+            }
+        }
+    },
+    "security": [
+        { "bearer": [] }
+    ],
+    "paths": {
+        "/health": {
+            "get": {
+                "summary": "Health check",
+                "security": [],
+                "responses": {
+                    "200": {
+                        "description": "Service is healthy",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "type": "object",
+                                    "properties": {
+                                        "status": { "type": "string", "example": "ok" }
+                                    },
+                                    "required": ["status"]
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/auth/sync": {
+            "post": {
+                "summary": "Idempotent user upsert triggered by frontend Auth.js callback",
+                "security": [],
+                "requestBody": {
+                    "required": true,
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "type": "object",
+                                "properties": {
+                                    "provider": { "type": "string", "example": "google" },
+                                    "providerAccountId": { "type": "string", "example": "1234567890" },
+                                    "email": { "type": "string", "format": "email", "nullable": true },
+                                    "name": { "type": "string", "nullable": true },
+                                    "image": { "type": "string", "format": "uri", "nullable": true }
+                                },
+                                "required": ["provider", "providerAccountId"]
+                            }
+                        }
+                    }
+                },
+                "responses": {
+                    "200": {
+                        "description": "User upserted successfully",
+                        "content": {
+                            "application/json": {
+                                "schema": { "$ref": "#/components/schemas/User" }
+                            }
+                        }
+                    },
+                    "400": { "$ref": "#/components/responses/BadRequest" }
+                }
+            }
+        },
+        "/auth/me": {
+            "get": {
+                "summary": "Get current authenticated user profile",
+                "responses": {
+                    "200": {
+                        "description": "Current user record",
+                        "content": {
+                            "application/json": {
+                                "schema": { "$ref": "#/components/schemas/User" }
+                            }
+                        }
+                    },
+                    "401": { "$ref": "#/components/responses/Unauthorized" }
+                }
+            }
+        },
+        "/groups": {
+            "get": {
+                "summary": "List all groups owned by the authenticated user",
+                "description": "Always includes the system default group (isDefault: true) as the first item.",
+                "responses": {
+                    "200": {
+                        "description": "Array of groups owned by current user",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "type": "array",
+                                    "items": { "$ref": "#/components/schemas/Group" }
+                                }
+                            }
+                        }
+                    },
+                    "401": { "$ref": "#/components/responses/Unauthorized" }
+                }
+            },
+            "post": {
+                "summary": "Create a new group",
+                "requestBody": {
+                    "required": true,
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "type": "object",
+                                "properties": {
+                                    "name": { "type": "string" }
+                                },
+                                "required": ["name"]
+                            }
+                        }
+                    }
+                },
+                "responses": {
+                    "201": {
+                        "description": "Group created",
+                        "content": {
+                            "application/json": {
+                                "schema": { "$ref": "#/components/schemas/Group" }
+                            }
+                        }
+                    },
+                    "400": { "$ref": "#/components/responses/BadRequest" },
+                    "401": { "$ref": "#/components/responses/Unauthorized" }
+                }
+            }
+        },
+        "/groups/{groupId}": {
+            "get": {
+                "summary": "Get group by ID",
+                "parameters": [
+                    {
+                        "name": "groupId",
+                        "in": "path",
+                        "required": true,
+                        "schema": { "type": "string", "format": "uuid" }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Group detail",
+                        "content": {
+                            "application/json": {
+                                "schema": { "$ref": "#/components/schemas/Group" }
+                            }
+                        }
+                    },
+                    "401": { "$ref": "#/components/responses/Unauthorized" },
+                    "404": { "$ref": "#/components/responses/NotFound" }
+                }
+            },
+            "delete": {
+                "summary": "Delete a group",
+                "description": "Cannot delete the default group (isDefault: true). All contents in the deleted group are reassigned to the user's default group.",
+                "parameters": [
+                    {
+                        "name": "groupId",
+                        "in": "path",
+                        "required": true,
+                        "schema": { "type": "string", "format": "uuid" }
+                    }
+                ],
+                "responses": {
+                    "204": { "description": "Group deleted. Contents reassigned to default group." },
+                    "400": {
+                        "description": "Attempt to delete the default group",
+                        "content": {
+                            "application/json": {
+                                "schema": { "$ref": "#/components/schemas/ApiError" }
+                            }
+                        }
+                    },
+                    "401": { "$ref": "#/components/responses/Unauthorized" },
+                    "404": { "$ref": "#/components/responses/NotFound" }
+                }
+            }
+        },
+        "/groups/{groupId}/content": {
+            "get": {
+                "summary": "List paginated content in a group",
+                "parameters": [
+                    {
+                        "name": "groupId",
+                        "in": "path",
+                        "required": true,
+                        "schema": { "type": "string", "format": "uuid" }
+                    },
+                    {
+                        "name": "page",
+                        "in": "query",
+                        "schema": { "type": "integer", "default": 1 }
+                    },
+                    {
+                        "name": "limit",
+                        "in": "query",
+                        "schema": { "type": "integer", "default": 10 }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Paginated content list",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "type": "object",
+                                    "properties": {
+                                        "data": {
+                                            "type": "array",
+                                            "items": { "$ref": "#/components/schemas/Content" }
+                                        },
+                                        "meta": {
+                                            "type": "object",
+                                            "properties": {
+                                                "total": { "type": "integer" },
+                                                "page": { "type": "integer" },
+                                                "limit": { "type": "integer" }
+                                            },
+                                            "required": ["total", "page", "limit"]
+                                        }
+                                    },
+                                    "required": ["data", "meta"]
+                                }
+                            }
+                        }
+                    },
+                    "401": { "$ref": "#/components/responses/Unauthorized" },
+                    "404": { "$ref": "#/components/responses/NotFound" }
+                }
+            }
+        },
+        "/content": {
+            "post": {
+                "summary": "Ingest text or file and dispatch async processing pipeline",
+                "description": "Exactly one of `text` or `file` must be provided. Both absent or both present results in 400. `group` must be a valid group UUID owned by the current user.",
+                "requestBody": {
+                    "required": true,
+                    "content": {
+                        "multipart/form-data": {
+                            "schema": {
+                                "type": "object",
+                                "properties": {
+                                    "title": { "type": "string" },
+                                    "group": {
+                                        "type": "string",
+                                        "format": "uuid",
+                                        "description": "ID of an existing group owned by the current user"
+                                    },
+                                    "text": {
+                                        "type": "string",
+                                        "description": "Raw Japanese text. Mutually exclusive with `file`."
+                                    },
+                                    "file": {
+                                        "type": "string",
+                                        "format": "binary",
+                                        "description": "PDF or .txt file. Mutually exclusive with `text`. Max 10MB."
+                                    }
+                                },
+                                "required": ["title", "group"]
+                            }
+                        }
+                    }
+                },
+                "responses": {
+                    "202": {
+                        "description": "Job accepted and enqueued",
+                        "content": {
+                            "application/json": {
+                                "schema": { "$ref": "#/components/schemas/ProcessingContent" }
+                            }
+                        }
+                    },
+                    "400": { "$ref": "#/components/responses/BadRequest" },
+                    "401": { "$ref": "#/components/responses/Unauthorized" }
+                }
+            }
+        },
+        "/content/{id}": {
+            "get": {
+                "summary": "Get content by ID — returns status-polymorphic shape",
+                "parameters": [
+                    {
+                        "name": "id",
+                        "in": "path",
+                        "required": true,
+                        "schema": { "type": "string", "format": "uuid" }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Content in its current lifecycle state",
+                        "content": {
+                            "application/json": {
+                                "schema": { "$ref": "#/components/schemas/Content" }
+                            }
+                        }
+                    },
+                    "401": { "$ref": "#/components/responses/Unauthorized" },
+                    "403": { "$ref": "#/components/responses/Forbidden" },
+                    "404": { "$ref": "#/components/responses/NotFound" }
+                }
+            },
+            "patch": {
+                "summary": "Move content to a different group",
+                "parameters": [
+                    {
+                        "name": "id",
+                        "in": "path",
+                        "required": true,
+                        "schema": { "type": "string", "format": "uuid" }
+                    }
+                ],
+                "requestBody": {
+                    "required": true,
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "type": "object",
+                                "properties": {
+                                    "groupId": {
+                                        "type": "string",
+                                        "format": "uuid",
+                                        "description": "Target group ID. Must be owned by the current user."
+                                    }
+                                },
+                                "required": ["groupId"]
+                            }
+                        }
+                    }
+                },
+                "responses": {
+                    "200": {
+                        "description": "Content updated",
+                        "content": {
+                            "application/json": {
+                                "schema": { "$ref": "#/components/schemas/BaseContent" }
+                            }
+                        }
+                    },
+                    "400": { "$ref": "#/components/responses/BadRequest" },
+                    "401": { "$ref": "#/components/responses/Unauthorized" },
+                    "403": { "$ref": "#/components/responses/Forbidden" },
+                    "404": { "$ref": "#/components/responses/NotFound" }
+                }
+            },
+            "delete": {
+                "summary": "Delete content and its associated job",
+                "parameters": [
+                    {
+                        "name": "id",
+                        "in": "path",
+                        "required": true,
+                        "schema": { "type": "string", "format": "uuid" }
+                    }
+                ],
+                "responses": {
+                    "204": { "description": "Content and job deleted" },
+                    "401": { "$ref": "#/components/responses/Unauthorized" },
+                    "403": { "$ref": "#/components/responses/Forbidden" },
+                    "404": { "$ref": "#/components/responses/NotFound" }
+                }
+            }
+        }
+    }
+}
