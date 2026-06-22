@@ -16,7 +16,8 @@
         "type-check": "tsc --noEmit",
         "test": "vitest run",
         "test:watch": "vitest",
-        "test:cov": "vitest run --coverage"
+        "test:cov": "vitest run --coverage",
+        "generate:openapi": "tsx scripts/generate-openapi.ts"
     },
     "dependencies": {
         "@google-cloud/tasks": "^6.2.3",

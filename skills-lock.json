@@ -1,0 +1,11 @@
+{
+  "version": 1,
+  "skills": {
+    "github-workflow-automation": {
+      "source": "sickn33/antigravity-awesome-skills",
+      "sourceType": "github",
+      "skillPath": "skills/github-workflow-automation/SKILL.md",
+      "computedHash": "678d1da4bde7dc6cbadef22607dd9052e913716093f5a9eb3414f0827758906f"
+    }
+  }
+}
