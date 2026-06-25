@@ -60,3 +60,10 @@ report.[0-9]*.[0-9]*.[0-9]*.[0-9]*.json
 
 # Aider
 .aider*
+
+# agents
+.agents/
+.specify/
+.nightshift-ai/
+.nightshift-ai.toml
+.standard-codes/

@@ -56,17 +56,6 @@
                 "type": "string",
                 "enum": ["N1", "N2", "N3", "N4", "N5"]
             },
-            "LevelDistribution": {
-                "type": "object",
-                "properties": {
-                    "N1": { "type": "number" },
-                    "N2": { "type": "number" },
-                    "N3": { "type": "number" },
-                    "N4": { "type": "number" },
-                    "N5": { "type": "number" }
-                },
-                "required": ["N1", "N2", "N3", "N4", "N5"]
-            },
             "GrammarExample": {
                 "type": "object",
                 "properties": {
@@ -82,13 +71,14 @@
                         "type": "string",
                         "description": "Human-readable pattern name, e.g. 〜てしまう"
                     },
+                    "level": { "$ref": "#/components/schemas/JLPTLevel" },
                     "description": { "type": "string" },
                     "examples": {
                         "type": "array",
                         "items": { "$ref": "#/components/schemas/GrammarExample" }
                     }
                 },
-                "required": ["name", "description", "examples"]
+                "required": ["name", "level", "description", "examples"]
             },
             "VocabularyItem": {
                 "type": "object",
@@ -149,25 +139,9 @@
                             "status": {
                                 "type": "string",
                                 "enum": ["PENDING", "PROCESSING"]
-                            },
-                            "progress": {
-                                "type": "integer",
-                                "minimum": 0,
-                                "maximum": 99,
-                                "description": "Worker execution progress percentage"
-                            },
-                            "current_step": {
-                                "type": "string",
-                                "nullable": true,
-                                "description": "Human-readable label of the currently executing pipeline step"
-                            },
-                            "estimated_completion_time": {
-                                "type": "string",
-                                "format": "date-time",
-                                "nullable": true
                             }
                         },
-                        "required": ["status", "progress"]
+                        "required": ["status"]
                     }
                 ]
             },
@@ -198,7 +172,6 @@
                                 "enum": ["COMPLETED"]
                             },
                             "overall_level": { "$ref": "#/components/schemas/JLPTLevel" },
-                            "level_distribution": { "$ref": "#/components/schemas/LevelDistribution" },
                             "sentences": {
                                 "type": "array",
                                 "items": { "$ref": "#/components/schemas/Sentence" }
@@ -209,7 +182,7 @@
                                 "items": { "$ref": "#/components/schemas/VocabularyItem" }
                             }
                         },
-                        "required": ["status", "overall_level", "level_distribution", "sentences", "vocabulary"]
+                        "required": ["status", "overall_level", "sentences", "vocabulary"]
                     }
                 ]
             },
@@ -620,6 +593,44 @@
                 ],
                 "responses": {
                     "204": { "description": "Content and job deleted" },
+                    "401": { "$ref": "#/components/responses/Unauthorized" },
+                    "403": { "$ref": "#/components/responses/Forbidden" },
+                    "404": { "$ref": "#/components/responses/NotFound" }
+                }
+            }
+        },
+        "/content/{id}/status": {
+            "get": {
+                "summary": "Stream content processing status updates via SSE",
+                "parameters": [
+                    {
+                        "name": "id",
+                        "in": "path",
+                        "required": true,
+                        "schema": { "type": "string", "format": "uuid" }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "SSE stream of content status updates",
+                        "content": {
+                            "text/event-stream": {
+                                "schema": {
+                                    "type": "object",
+                                    "properties": {
+                                        "status": {
+                                            "type": "string",
+                                            "enum": ["PENDING", "PROCESSING", "COMPLETED", "FAILED"]
+                                        },
+                                        "progress": {
+                                            "type": "integer",
+                                            "description": "Percentage complete (0-100)"
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                    },
                     "401": { "$ref": "#/components/responses/Unauthorized" },
                     "403": { "$ref": "#/components/responses/Forbidden" },
                     "404": { "$ref": "#/components/responses/NotFound" }
