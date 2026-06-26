@@ -12,7 +12,17 @@ import { LlmModule } from './llm/llm.module';
 import { GroupModule } from './group/group.module';
 
 @Module({
-  imports: [AuthModule, HealthModule, JobModule, ContentModule, PrismaModule, StorageModule, NlpModule, LlmModule, GroupModule],
+  imports: [
+    AuthModule,
+    HealthModule,
+    JobModule,
+    ContentModule,
+    PrismaModule,
+    StorageModule,
+    NlpModule,
+    LlmModule,
+    GroupModule,
+  ],
   controllers: [AppController],
   providers: [AppService],
 })
