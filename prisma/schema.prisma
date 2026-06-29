@@ -1,15 +1,144 @@
 // This is your Prisma schema file,
 // learn more about it in the docs: https://pris.ly/d/prisma-schema
 
-// Looking for ways to speed up your queries, or scale easily with your serverless or edge functions?
-// Try Prisma Accelerate: https://pris.ly/cli/accelerate-init
-
 generator client {
-  provider = "prisma-client"
+  provider = "prisma-client-js"
   output   = "../src/generated/prisma"
 }
 
 datasource db {
   provider = "postgresql"
   url      = env("DATABASE_URL")
+}
+
+enum ContentStatus {
+  PENDING
+  PROCESSING
+  COMPLETED
+  FAILED
+}
+
+model Learner {
+  id                String   @id @default(uuid())
+  provider          String
+  providerAccountId String
+  email             String?
+  name              String?
+  avatarUrl         String?
+  createdAt         DateTime @default(now())
+  updatedAt         DateTime @updatedAt
+  groups            Group[]
+
+  @@unique([provider, providerAccountId])
+}
+
+model Group {
+  id        String    @id @default(uuid())
+  ownerId   String
+  name      String
+  isDefault Boolean   @default(false)
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
+  learner   Learner   @relation(fields: [ownerId], references: [id])
+  contents  Content[]
+}
+
+model Content {
+  id                 String          @id @default(uuid())
+  ownerId            String
+  groupId            String
+  title              String
+  inputText          String?
+  inputFileObjectKey String?
+  inputFileName      String?
+  inputMimeType      String?
+  status             ContentStatus   @default(PENDING)
+  overallLevel       Int?
+  errorMessage       String?
+  createdAt          DateTime        @default(now())
+  updatedAt          DateTime        @updatedAt
+  learner            Learner         @relation(fields: [ownerId], references: [id])
+  group              Group           @relation(fields: [groupId], references: [id])
+  processingJob      ProcessingJob?
+  sentenceAnalyses   SentenceAnalysis[]
+  vocabularyItems    VocabularyItem[]
+  uploadedFiles      UploadedFile[]
+}
+
+model ProcessingJob {
+  id               String        @id @default(uuid())
+  contentId        String        @unique
+  status           ContentStatus
+  progress         Int           @default(0)
+  currentStep      String?
+  externalTaskName String?
+  attemptCount     Int           @default(0)
+  idempotencyKey   String        @unique
+  startedAt        DateTime?
+  completedAt      DateTime?
+  failedAt         DateTime?
+  errorMessage     String?
+  content          Content       @relation(fields: [contentId], references: [id])
+}
+
+model SentenceAnalysis {
+  id              String        @id @default(uuid())
+  contentId       String
+  position        Int
+  text            String
+  translation     String
+  level           Int?
+  similarPatterns String[]
+  content         Content       @relation(fields: [contentId], references: [id])
+  grammarPoints   GrammarPoint[]
+}
+
+model GrammarPoint {
+  id                  String             @id @default(uuid())
+  sentenceAnalysisId  String
+  name                String
+  level               Int?
+  description         String
+  sentenceAnalysis    SentenceAnalysis   @relation(fields: [sentenceAnalysisId], references: [id])
+  grammarExamples     GrammarExample[]
+}
+
+model GrammarExample {
+  id             String       @id @default(uuid())
+  grammarPointId String
+  japanese       String
+  translation    String
+  position       Int
+  grammarPoint   GrammarPoint @relation(fields: [grammarPointId], references: [id])
+}
+
+model GrammarExampleCache {
+  patternName String   @id
+  level       Int?
+  examples    Json
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+}
+
+model VocabularyItem {
+  id             String   @id @default(uuid())
+  contentId      String
+  word           String
+  reading        String
+  level          Int?
+  translation    String
+  synonyms       String[]
+  examplePhrases String[]
+  content        Content  @relation(fields: [contentId], references: [id])
+}
+
+model UploadedFile {
+  id           String   @id @default(uuid())
+  contentId    String
+  objectKey    String
+  originalName String
+  mimeType     String
+  sizeBytes    Int
+  createdAt    DateTime @default(now())
+  content      Content  @relation(fields: [contentId], references: [id])
 }
