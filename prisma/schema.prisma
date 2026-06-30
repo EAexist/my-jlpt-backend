@@ -57,7 +57,6 @@ model Content {
   errorMessage       String?
   createdAt          DateTime        @default(now())
   updatedAt          DateTime        @updatedAt
-  learner            Learner         @relation(fields: [ownerId], references: [id])
   group              Group           @relation(fields: [groupId], references: [id])
   processingJob      ProcessingJob?
   sentenceAnalyses   SentenceAnalysis[]

@@ -67,3 +67,6 @@ report.[0-9]*.[0-9]*.[0-9]*.[0-9]*.json
 .nightshift-ai/
 .nightshift-ai.toml
 .standard-codes/
+
+# Prisma Client
+src/generated/prisma
