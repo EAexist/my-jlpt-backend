@@ -35,9 +35,9 @@
 - [ ] T007 [docs|.standard-codes/ref-repos/docs.nestjs/content/recipes/prisma.md] Define Prisma models and enums for Learner, Group, Content, ProcessingJob, SentenceAnalysis, GrammarPoint, GrammarExample, GrammarExampleCache, VocabularyItem, and UploadedFile in prisma/schema.prisma
 - [ ] T008 [docs|.standard-codes/ref-repos/docs.nestjs/content/recipes/prisma.md] Generate Prisma migration for the JLPT data model in prisma/migrations/001_jlpt_backend_api/migration.sql
 - [ ] T009 [P] [docs|.standard-codes/ref-repos/docs.nestjs/content/recipes/prisma.md] Add PrismaModule and PrismaService lifecycle management in src/prisma/prisma.module.ts and src/prisma/prisma.service.ts
-- [ ] T010 [P] [docs|.standard-codes/ref-repos/docs.nestjs/content/custom-decorators.md] Add current learner request type and decorator in src/common/auth/current-learner.decorator.ts
-- [ ] T011 [P] [docs|.standard-codes/ref-repos/docs.nestjs/content/security/authentication.md] Implement bearer token verification with jose in src/common/auth/bearer-auth.guard.ts
-- [ ] T012 [P] [docs|.standard-codes/ref-repos/docs.nestjs/content/security/authorization.md] Implement ownership and resource error helpers in src/common/auth/ownership.service.ts
+- [ ] T010 [P] [docs|.standard-codes/ref-repos/docs.nestjs/content/custom-decorators.md] Add current learner request type and decorator in src/auth/current-learner.decorator.ts
+- [ ] T011 [P] [docs|.standard-codes/ref-repos/docs.nestjs/content/security/authentication.md] Implement bearer token verification with jose in src/auth/bearer-auth.guard.ts
+- [ ] T012 [P] [docs|.standard-codes/ref-repos/docs.nestjs/content/security/authorization.md] Implement ownership and resource error helpers in src/auth/ownership.service.ts
 - [ ] T013 [P] [docs|.standard-codes/ref-repos/docs.nestjs/content/pipes.md] Implement Zod validation pipe and exception mapping in src/common/validation/zod-validation.pipe.ts
 - [ ] T014 [P] [docs|.standard-codes/ref-repos/docs.nestjs/content/exception-filters.md] Implement centralized ApiError exception filter in src/common/filters/api-error.filter.ts
 - [ ] T015 [P] [docs|.standard-codes/ref-repos/docs.nestjs/content/techniques/file-upload.md] Add GCS upload boundary in src/storage/storage.module.ts and src/storage/storage.service.ts
