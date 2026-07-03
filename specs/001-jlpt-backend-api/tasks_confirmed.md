@@ -1,7 +1,9 @@
 # Tasks: JLPT Backend API
 
 **Input**: Design documents from `/specs/001-jlpt-backend-api/`
-**Prerequisites**: plan.md, spec.md, research.md, data-model.md, contracts/external-api.md, quickstart.md
+<!-- **Prerequisites**: plan.md, spec.md, research.md, data-model.md, contracts/external-api.md, quickstart.md -->
+**Prerequisites**: plan.md, data-model.md, contracts/external-api.md
+
 **Tests**: Included because the specification requires contract verification, authorization testing, and an end-to-end flow.
 **Organization**: Tasks are grouped by user story to enable independent implementation and testing.
 
@@ -17,10 +19,10 @@
 
 <!-- - [ ] T001 Fix malformed JSON in canonical OpenAPI contract so tooling can parse it in .agents/specs/openapi.json
 - [ ] T002 [P] Add generated OpenAPI comparison helper for .agents/specs/openapi.json in scripts/generate-openapi.ts -->
-- [ ] T003 [P] Add API base path `/api/v1`, global config loading, and validation plumbing in src/main.ts
-- [ ] T004 [P] Define required environment variables and defaults in src/common/config/env.schema.ts
-- [ ] T005 [P] Add shared API response/error constants matching ApiError in src/common/api/api-error.ts
-- [ ] T006 [P] Create reusable test application bootstrap helpers in src/common/testing/app-test-utils.ts
+- [X] T003 [P] Add API base path `/api/v1`, global config loading, and validation plumbing in src/main.ts
+- [X] T004 [P] Define required environment variables and defaults in src/common/config/env.schema.ts
+- [X] T005 [P] Add shared API response/error constants matching ApiError in src/common/api/api-error.ts
+- [X] T006 [P] Create reusable test application bootstrap helpers in src/common/testing/app-test-utils.ts
 
 ---
 
@@ -30,13 +32,13 @@
 
 **CRITICAL**: No user story work can begin until this phase is complete.
 
-- [ ] T007 Define Prisma models and enums for Learner, Group, Content, ProcessingJob, SentenceAnalysis, GrammarPoint, GrammarExample, GrammarExampleCache, VocabularyItem, and UploadedFile in prisma/schema.prisma
-- [ ] T008 Generate Prisma migration for the JLPT data model in prisma/migrations/001_jlpt_backend_api/migration.sql
-- [ ] T009 [P] Add PrismaModule and PrismaService lifecycle management in src/prisma/prisma.module.ts and src/prisma/prisma.service.ts
-- [ ] T010 [P] Add current learner request type and decorator in src/auth/current-learner.decorator.ts
-- [ ] T011 [P] Implement bearer token verification with jose in src/auth/bearer-auth.guard.ts
-- [ ] T012 [P] Implement ownership and resource error helpers in src/auth/ownership.service.ts
-- [ ] T013 [P] Implement Zod validation pipe and exception mapping in src/common/validation/zod-validation.pipe.ts
+- [X] T007 Define Prisma models and enums for Learner, Group, Content, ProcessingJob, SentenceAnalysis, GrammarPoint, GrammarExample, GrammarExampleCache, VocabularyItem, and UploadedFile in prisma/schema.prisma
+- [X] T008 Generate Prisma migration for the JLPT data model in prisma/migrations/001_jlpt_backend_api/migration.sql
+- [X] T009 [P] Add PrismaModule and PrismaService lifecycle management in src/prisma/prisma.module.ts and src/prisma/prisma.service.ts
+- [X] T010 [P] Add current learner request type and decorator in src/auth/current-learner.decorator.ts
+- [X] T011 [P] Implement bearer token verification with jose in src/auth/bearer-auth.guard.ts
+- [X] T012 [P] Implement ownership and resource error helpers in src/auth/ownership.service.ts
+- [X] T013 [P] Implement Zod validation pipe and exception mapping in src/common/validation/zod-validation.pipe.ts
 - [ ] T014 [P] Implement centralized ApiError exception filter in src/common/filters/api-error.filter.ts
 - [ ] T015 [P] Add GCS upload boundary in src/storage/storage.module.ts and src/storage/storage.service.ts
 - [ ] T016 [P] Add Cloud Tasks dispatch boundary in src/nlp/nlp.module.ts and src/nlp/nlp-task.service.ts
