@@ -1,4 +1,5 @@
 import { Injectable } from '@nestjs/common';
+import { ConfigService } from '@nestjs/config';
 import { Storage } from '@google-cloud/storage';
 
 @Injectable()
@@ -6,9 +7,9 @@ export class StorageService {
   private storage: Storage;
   private bucket: string;
 
-  constructor() {
+  constructor(private configService: ConfigService) {
     this.storage = new Storage();
-    this.bucket = process.env.GCS_BUCKET_NAME || 'jlpt-study-material-bucket';
+    this.bucket = this.configService.get<string>('GCS_BUCKET_NAME') || 'jlpt-study-material-bucket';
   }
 
   async uploadFile(filename: string, buffer: Buffer): Promise<string> {
