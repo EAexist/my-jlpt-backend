@@ -130,7 +130,9 @@ As a learner, I need to list, move, inspect, and delete my saved content so that
 - **FR-021**: System MUST cache generated example sentences for identical grammar patterns to avoid unnecessary duplicate generation and keep repeated results consistent.
 - **FR-022**: System MUST allow learners to move learner-owned content to another learner-owned group.
 - **FR-023**: System MUST allow learners to delete learner-owned content and the associated processing record.
-- **FR-024**: System MUST stream learner-authorized processing status updates that include lifecycle state and progress from 0 through 100 where progress is available.
+- **FR-024**: System MUST stream learner-authorized processing status updates that include lifecycle state of if microservice is processing or completed.
+- **FR-024a**: System MUST return the current processing status immediately upon SSE subscription, even if the job already reached a terminal state before the client connected, without querying the NLP worker directly.
+- **FR-024b**: System MUST terminate the SSE stream once a terminal lifecycle state (completed or failed) is delivered, rather than holding the connection open indefinitely.
 - **FR-025**: System MUST return failed content with a user-readable error message when processing cannot complete.
 - **FR-026**: System MUST distinguish unauthenticated, unauthorized, not found, and validation/business-rule failures using the error categories required by the external contract.
 - **FR-027**: System MUST implement the externally observable behavior, schemas, status codes, validation rules, and response shapes defined in `./.agents/specs/openapi.json`.
