@@ -6,6 +6,10 @@ import { ContentManagementService } from './content-management/content-managemen
 
 @Module({
   controllers: [ContentController],
-  providers: [ContentService, ContentIngestionService, ContentManagementService],
+  providers: [
+    ContentService,
+    ContentIngestionService,
+    ContentManagementService,
+  ],
 })
 export class ContentModule {}

@@ -9,7 +9,9 @@ export class StorageService {
 
   constructor(private configService: ConfigService) {
     this.storage = new Storage();
-    this.bucket = this.configService.get<string>('GCS_BUCKET_NAME') || 'jlpt-study-material-bucket';
+    this.bucket =
+      this.configService.get<string>('GCS_BUCKET_NAME') ||
+      'jlpt-study-material-bucket';
   }
 
   async uploadFile(filename: string, buffer: Buffer): Promise<string> {
