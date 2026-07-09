@@ -1,7 +1,11 @@
 import { z } from 'zod';
 
 export const AuthSyncRequestSchema = z.object({
-  idToken: z.string().min(1),
+  provider: z.string(),
+  providerAccountId: z.string(),
+  email: z.string().email().nullable(),
+  name: z.string().nullable(),
+  image: z.string().url().nullable(),
 });
 
 export type AuthSyncRequest = z.infer<typeof AuthSyncRequestSchema>;
