@@ -12,7 +12,7 @@ Implement the JLPT Study Material Generator backend by extending the current Nes
 
 **Language/Version**: TypeScript 5.7.x on Node.js 22 types
 
-**Primary Dependencies**: NestJS 11 (`@nestjs/common`, `@nestjs/core`, `@nestjs/platform-express`, `@nestjs/config`, `@nestjs/swagger`), Prisma 6, `@google-cloud/tasks`, `@google-cloud/storage`, `google-auth-library` (verifies Google-signed OIDC identity tokens on the private NLP-worker result-callback endpoint, distinct from the learner-facing `jose` bearer-token path), `@google/genai`, `jose`, RxJS, Zod
+**Primary Dependencies**: NestJS 11 (`@nestjs/common`, `@nestjs/core`, `@nestjs/platform-express`, `@nestjs/config`, `@nestjs/swagger`), Prisma 6, `@google-cloud/tasks`, `@google-cloud/storage`, `google-auth-library` (verifies Google-signed OIDC identity tokens on the private NLP-worker result-callback endpoint, distinct from the learner-facing `jose` bearer-token path), `@google/genai` (used by the `llm` module for both grammar-example generation and, as of this revision, grammar-pattern identification per sentence — grammar analysis is no longer performed by the external NLP worker), `jose`, RxJS, Zod
 
 **Storage**: PostgreSQL through Prisma; Google Cloud Storage for intermediate uploaded files; generated grammar-example cache persisted in PostgreSQL
 
@@ -72,8 +72,12 @@ src/
 |              # (job.controller.ts, job-callback-auth.guard.ts) and the in-memory
 |              # status registry (job-status.service.ts) consumed by content's SSE endpoint
 |-- storage/
-|-- nlp/
-|-- llm/
+|-- nlp/       # NlpModule: dispatches chunking + vocabulary-matching jobs to the external
+|              # FastAPI NLP worker via Cloud Tasks and parses its callback payload only —
+|              # owns no grammar logic
+|-- llm/       # LlmModule: Gemini-backed (`@google/genai`) grammar-pattern identification,
+|              # per-grammar-point example generation via GrammarExampleCache, and
+|              # Content.overallLevel computation
 |-- prisma/
 `-- common/
 
@@ -93,7 +97,13 @@ Within `content`, ingestion (submission, upload, dispatch) and management (listi
 
 `job` owns the `ProcessingJob` entity's full lifecycle exclusively, including the inbound boundary with the private NLP worker: it is never called by learners directly. `GroupModule` and `ContentModule` import each other's exported services explicitly where a cross-module read is required (e.g., `GroupController` injecting `ContentManagementService`); shared infrastructure modules (`PrismaModule`, `StorageModule`, `NlpModule`, `LlmModule`) are likewise imported by name into each module that needs them rather than declared as `@Global()`, so each module's dependency graph stays visible from its own file.
 
-**Result Callback**: The NLP worker never calls this service synchronously and is never queried by it. On completion, the worker enqueues its own Cloud Task targeting this service's private `POST /internal/jobs/{jobId}/callback` endpoint, carrying the analysis results. This boundary is protected at two layers: the Cloud Run IAM invoker binding rejects any caller other than the worker's service account before the request reaches application code, and the endpoint additionally verifies the attached OIDC identity token in-app via `google-auth-library` as defense in depth. Persisting the callback (sentences, grammar examples, deduplicated vocabulary) and flipping the `ProcessingJob` to a terminal state happen together, idempotently, so a Cloud Tasks retry after a partial failure cannot double-write results. Using a worker-initiated Cloud Task rather than a direct HTTP call means delivery is retried automatically if this service is briefly unavailable, without re-running the NLP analysis itself.
+**Result Callback**: The NLP worker never calls this service synchronously and is never queried by it. On completion, the worker enqueues its own Cloud Task targeting this service's private `POST /internal/jobs/{jobId}/callback` endpoint, carrying only the output of its two remaining responsibilities: (1) the input text segmented into ordered chunks of 2-3 sentences each, and (2) extracted vocabulary items matched against the worker's own dictionary. **The NLP worker no longer identifies grammar patterns or produces grammar examples** — that responsibility now belongs to this service's `llm` module, which calls Gemini (`@google/genai`) after the callback is received, using the worker's sentence chunks as input. This boundary is protected at two layers: the Cloud Run IAM invoker binding rejects any caller other than the worker's service account before the request reaches application code, and the endpoint additionally verifies the attached OIDC identity token in-app via `google-auth-library` as defense in depth.
+
+> **Resolved**: the `llm` module's grammar analysis consumes the NLP worker's chunk output as its input (one Gemini call per chunk, or batched — implementation detail), so it strictly depends on the callback having arrived first; it cannot run before or independently of it. The exact request/response payload shape for `POST /internal/jobs/{jobId}/callback` (chunk list, vocabulary list) is defined authoritatively in the FastAPI NLP service spec (`specs/002-nlp-worker-service/plan.md`), since that service is the payload's producer — `job.controller.ts` must accept exactly that shape.
+>
+> **Still open (see chat)**: whether the Gemini-based grammar analysis runs synchronously inside the callback request handler before the HTTP response is returned to the worker's Cloud Task, or is dispatched as a further asynchronous step with `ProcessingJob.status` remaining `PROCESSING` and `currentStep` updated accordingly. This is a NestJS-internal orchestration decision and does not affect the FastAPI NLP worker's contract either way.
+
+Persisting the callback (chunked sentences, deduplicated vocabulary), performing grammar analysis, and flipping the `ProcessingJob` to a terminal state must together be idempotent, so a Cloud Tasks retry after a partial failure cannot double-write results or re-invoke Gemini redundantly. Using a worker-initiated Cloud Task rather than a direct HTTP call means delivery of the NLP worker's chunking/vocabulary output is retried automatically if this service is briefly unavailable, without re-running that NLP analysis itself.
 
 **Status Streaming**: Job status updates for `GET /content/{id}/status` are served entirely from the NestJS layer via an in-memory, per-job RxJS `BehaviorSubject` registry backed by the persisted `ProcessingJob` row — the microservice is never queried directly for status. A late SSE subscriber must immediately receive current state (not just future emissions), and a terminal state must both close the SSE stream and evict the subject from the registry.
 

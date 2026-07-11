@@ -46,6 +46,10 @@ Implementation must conform to that file for all externally observable behavior.
 - `CompletedContent`
 - `Content`
 
+## Internal architecture note (does not change the external contract)
+
+As of this revision, `GrammarPoint` and `GrammarExample` data returned under `Content`/`Sentence` responses are produced by this service's Gemini-backed `llm` module, not by the external NLP worker. The external NLP worker is now scoped to text chunking and dictionary-matched vocabulary extraction only. The OpenAPI shape of `GrammarPoint`, `GrammarExample`, `Sentence`, and `VocabularyItem` is unchanged by this internal shift — only where the data originates changes.
+
 ## Contract rules
 
 - Do not treat `specs/api.ts` or `generated/openapi.json` as the source of truth unless regenerated from `./.agents/specs/openapi.json`.

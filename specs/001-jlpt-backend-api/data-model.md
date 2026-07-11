@@ -1,5 +1,7 @@
 # Data Model: JLPT Backend API
 
+> **Update note**: As of this revision, the external NLP worker's responsibilities are limited to (1) chunking input text into ordered 2-3 sentence groups and (2) extracting and dictionary-matching vocabulary. Grammar pattern identification and all grammar-related generation now belong to this service's `llm` module (Gemini), not the NLP worker. Entities below are annotated where this affects field provenance; unresolved provenance questions are marked as open questions (see chat) rather than guessed.
+
 ## Learner
 
 Represents an authenticated user synchronized from the client sign-in flow.
@@ -149,6 +151,9 @@ Analysis for one sentence in completed content.
 
 - Sentence order is stable.
 - Completed content returns all sentence analyses for that content.
+- **Resolved**: one `SentenceAnalysis` row corresponds to one NLP-worker chunk of 2-3 *original* sentences (the worker first segments the input into individual sentences, then groups consecutive sentences into chunks — see the FastAPI NLP service spec for the exact grouping algorithm). Grouping exists only to avoid a chunk of a single very short sentence; `text` is the chunk's full original text, not a single grammatical sentence.
+- **Resolved**: `translation` is entirely NestJS's responsibility (`llm` module via Gemini). The NLP worker does not produce translations.
+- `similarPatterns` and grammar-adjacent classification are populated by the `llm` module, not the NLP worker.
 
 ## GrammarPoint
 
@@ -172,6 +177,7 @@ Grammar pattern identified in a sentence.
 
 - Completed output must include exactly three examples per grammar point.
 - Identical grammar patterns should reuse cached examples when available.
+- Grammar pattern identification (which patterns exist in a given sentence) is performed by the `llm` module via Gemini. This is a change from prior versions of this spec, in which grammar identification was an NLP-worker responsibility.
 
 ## GrammarExample
 
@@ -233,6 +239,8 @@ Deduplicated vocabulary entry for completed content.
 
 - Vocabulary is deduplicated per content result by normalized word and reading.
 - Required fields match the external contract.
+- **Resolved**: the NLP worker returns only dictionary-matchable fields — `word` (dictionary/lemma form), `reading`, `level` (nullable, JLPT-list lookup), and `translation` (nullable, primary JMDict gloss). Tokens with no dictionary match are omitted by the worker entirely (not returned as partial items).
+- **Resolved**: `synonyms` and `examplePhrases` are NOT produced by the NLP worker (JMDict/JLPT-list matching does not reliably provide these). They are out of the NLP worker's scope; population strategy (LLM-generated, left empty, or a later enhancement) is a NestJS-side decision outside this data model's NLP-worker contract.
 
 ## UploadedFile
 
@@ -256,3 +264,4 @@ Intermediate metadata for files handed off to the private NLP worker.
 
 - Only PDF and plain text uploads are accepted.
 - The NestJS service stores and dispatches file references; it does not perform document parsing.
+- **Resolved**: PDF/text-to-plain-text extraction is performed by the FastAPI NLP worker, as a precursor step before its chunking step (it must have plain text before sentence segmentation). This keeps CPU-intensive parsing outside the NestJS service, consistent with this plan's existing constraint, and avoids adding PDF-parsing dependencies to `package.json`.
