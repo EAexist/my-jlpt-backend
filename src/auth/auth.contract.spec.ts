@@ -65,9 +65,7 @@ describe('Auth Contract Tests', () => {
 
   describe('GET /auth/me', () => {
     it('should return 401 when no token is provided', async () => {
-      await request(app.getHttpServer())
-        .get('/auth/me')
-        .expect(401);
+      await request(app.getHttpServer()).get('/auth/me').expect(401);
     });
 
     it('should return 200 when valid token is provided', async () => {
@@ -81,7 +79,7 @@ describe('Auth Contract Tests', () => {
         .set('Authorization', `Bearer ${token}`)
         .expect(200);
 
-      expect(response.body.id).toEqual('uuid-1');
+      expect((response.body as { id: string }).id).toEqual('uuid-1');
     });
   });
 });

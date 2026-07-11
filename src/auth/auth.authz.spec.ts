@@ -35,9 +35,7 @@ describe('Auth Authorization Tests', () => {
 
   describe('GET /auth/me', () => {
     it('should return 401 when Authorization header is missing', async () => {
-      await request(app.getHttpServer())
-        .get('/api/v1/auth/me')
-        .expect(401);
+      await request(app.getHttpServer()).get('/api/v1/auth/me').expect(401);
     });
 
     it('should return 401 when token format is invalid (no Bearer)', async () => {
@@ -77,6 +75,5 @@ describe('Auth Authorization Tests', () => {
         .set('Authorization', `Bearer ${token}`)
         .expect(200);
     });
-
   });
 });

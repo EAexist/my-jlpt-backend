@@ -15,7 +15,7 @@ export class AuthController {
 
   @Get('me')
   @UseGuards(BearerAuthGuard)
-  async getMe(@Req() req: Request & { user: { id: string } }) {
+  getMe(@Req() req: Request & { user: { id: string } }) {
     // This is a placeholder since the service needs a method to fetch current user profile.
     // Spec shows UserResponse fields: id, email, name, avatarUrl.
     // Re-check AuthService for a findById method or similar in future if needed.

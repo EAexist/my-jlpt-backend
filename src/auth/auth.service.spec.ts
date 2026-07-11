@@ -5,14 +5,12 @@ import { PrismaService } from '../prisma/prisma.service';
 import { vi } from 'vitest';
 
 describe('AuthService', () => {
-  let service: AuthService;
-
-  beforeEach(async () => {
-    // No-op for global setup
-  });
-
   it('should sync learner and create default group if not exists', async () => {
-    const mockLearner = { id: 'uuid-1', provider: 'google', providerAccountId: 'acc-1' };
+    const mockLearner = {
+      id: 'uuid-1',
+      provider: 'google',
+      providerAccountId: 'acc-1',
+    };
     const mockPrisma = {
       $transaction: vi.fn(),
       learner: { upsert: vi.fn().mockResolvedValue(mockLearner) },
@@ -21,9 +19,12 @@ describe('AuthService', () => {
         create: vi.fn().mockResolvedValue({ id: 'group-uuid' }),
       },
     };
-
     // Need to handle the $transaction callback
-    mockPrisma.$transaction.mockImplementation((callback) => callback(mockPrisma));
+    mockPrisma.$transaction.mockImplementation(
+      async (callback: (tx: any) => Promise<any>) =>
+        // eslint-disable-next-line @typescript-eslint/no-unsafe-return
+        await callback(mockPrisma),
+    );
 
     const module: TestingModule = await Test.createTestingModule({
       imports: [AuthModule],
@@ -38,7 +39,9 @@ describe('AuthService', () => {
       provider: 'google',
       providerAccountId: 'acc-1',
       email: 'test@example.com',
-    } as any);
+      name: 'Test User',
+      image: null,
+    });
 
     expect(result).toEqual(mockLearner);
     expect(mockPrisma.learner.upsert).toHaveBeenCalled();
