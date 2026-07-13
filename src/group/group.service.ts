@@ -61,4 +61,35 @@ export class GroupService {
 
     return { success: true };
   }
+
+  async findContents(
+    ownerId: string,
+    groupId: string,
+    page: number,
+    limit: number,
+  ) {
+    // Validate group ownership
+    await this.prisma.group.findFirstOrThrow({
+      where: { id: groupId, ownerId },
+    });
+
+    const [data, total] = await this.prisma.$transaction([
+      this.prisma.content.findMany({
+        where: { groupId },
+        skip: (page - 1) * limit,
+        take: limit,
+        orderBy: { createdAt: 'desc' },
+      }),
+      this.prisma.content.count({ where: { groupId } }),
+    ]);
+
+    return {
+      data,
+      meta: {
+        total,
+        page,
+        limit,
+      },
+    };
+  }
 }

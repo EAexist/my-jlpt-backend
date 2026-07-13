@@ -1,4 +1,16 @@
-import { Controller, Get, Post, Body, Param, Delete } from '@nestjs/common';
+import {
+  Controller,
+  Get,
+  Post,
+  Body,
+  Param,
+  Delete,
+  HttpCode,
+  HttpStatus,
+  Query,
+  DefaultValuePipe,
+  ParseIntPipe,
+} from '@nestjs/common';
 import { GroupService } from './group.service';
 import { CreateGroupDto } from './dto/create-group.dto';
 import { CurrentLearnerDecorator } from '../auth/current-learner.decorator';
@@ -29,11 +41,22 @@ export class GroupController {
     return this.groupService.findOne(learner.id, id);
   }
 
+  @HttpCode(HttpStatus.NO_CONTENT)
   @Delete(':id')
   remove(
     @CurrentLearnerDecorator() learner: CurrentLearner,
     @Param('id') id: string,
   ) {
     return this.groupService.remove(learner.id, id);
+  }
+
+  @Get(':groupId/content')
+  getContents(
+    @CurrentLearnerDecorator() learner: CurrentLearner,
+    @Param('groupId') groupId: string,
+    @Query('page', new DefaultValuePipe(1), ParseIntPipe) page: number,
+    @Query('limit', new DefaultValuePipe(10), ParseIntPipe) limit: number,
+  ) {
+    return this.groupService.findContents(learner.id, groupId, page, limit);
   }
 }
