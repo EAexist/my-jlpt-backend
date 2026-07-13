@@ -32,19 +32,34 @@ export const SentenceSchema = z.object({
   similar_patterns: z.array(z.string()),
 });
 
-// Multipart Ingestion Schema
-export const CreateContentMultipartSchema = z
+// Content Request Schemas
+export const UploadUrlRequestSchema = z.object({
+  fileName: z.string().min(1),
+  mimeType: z.string().min(1),
+});
+
+export const UploadUrlResponseSchema = z.object({
+  signedUrl: z.string().url(),
+  objectKey: z.string().uuid(),
+  expiresAt: z.string().datetime(),
+});
+
+export const CreateContentRequestSchema = z
   .object({
-    title: z.string(),
-    group: z.string().uuid(),
+    title: z.string().min(1),
+    groupId: z.string().uuid(),
     text: z.string().optional(),
-    // Note: z.file() usually requires specific handling in frameworks.
-    // Assuming a generic file validation or reliance on framework-level piping.
-    file: z.any().optional(),
+    inputFile: z
+      .object({
+        objectKey: z.string().uuid(),
+        fileName: z.string().min(1),
+        mimeType: z.string().min(1),
+      })
+      .optional(),
   })
-  .refine((data) => !!data.text !== !!data.file, {
-    message: "Exactly one of 'text' or 'file' must be provided.",
-    path: ['text', 'file'],
+  .refine((data) => !!data.text !== !!data.inputFile, {
+    message: "Exactly one of 'text' or 'inputFile' must be provided.",
+    path: ['text', 'inputFile'],
   });
 
 // Content Response Schemas
