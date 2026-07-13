@@ -8,13 +8,15 @@
 
 Implement the JLPT Study Material Generator backend by extending the current NestJS codebase in place and making `./.agents/specs/openapi.json` the binding external API contract. The backend remains a minimal modular NestJS web service: health, auth, groups, content, jobs, storage, processing orchestration, and generated-study-material persistence. `package.json` is the source of truth for allowed libraries; planning uses only dependencies already declared there.
 
+**Upload architecture migration**: File ingestion moves from a backend-proxied upload (client sends raw file bytes to NestJS, which re-uploads them to GCS via the SDK) to a pre-signed URL handoff. The `storage` module now exposes an endpoint that issues short-lived (5-15 minute) V4 signed `PUT` URLs directly against a GCS bucket object path; the client uploads bytes straight to GCS, and the NestJS process never buffers or streams a file body. This removes Multer-based multipart file handling from the ingestion path entirely and eliminates the associated request-body size/RAM pressure on the backend.
+
 ## Technical Context
 
 **Language/Version**: TypeScript 5.7.x on Node.js 22 types
 
-**Primary Dependencies**: NestJS 11 (`@nestjs/common`, `@nestjs/core`, `@nestjs/platform-express`, `@nestjs/config`, `@nestjs/swagger`), Prisma 6, `@google-cloud/tasks`, `@google-cloud/storage`, `google-auth-library` (verifies Google-signed OIDC identity tokens on the private NLP-worker result-callback endpoint, distinct from the learner-facing `jose` bearer-token path), `@google/genai` (used by the `llm` module for both grammar-example generation and, as of this revision, grammar-pattern identification per sentence — grammar analysis is no longer performed by the external NLP worker), `jose`, RxJS, Zod
+**Primary Dependencies**: NestJS 11 (`@nestjs/common`, `@nestjs/core`, `@nestjs/platform-express`, `@nestjs/config`, `@nestjs/swagger`), Prisma 6, `@google-cloud/tasks`, `@google-cloud/storage` (as of this revision, used exclusively to mint short-lived V4 signed `PUT` URLs for direct client-to-GCS uploads and to verify uploaded object metadata after the fact — the NestJS process no longer accepts, buffers, or re-uploads file bytes itself, so no multipart/Multer file-body parsing remains on the ingestion path), `google-auth-library` (verifies Google-signed OIDC identity tokens on the private NLP-worker result-callback endpoint, distinct from the learner-facing `jose` bearer-token path), `@google/genai` (used by the `llm` module for both grammar-example generation and, as of this revision, grammar-pattern identification per sentence — grammar analysis is no longer performed by the external NLP worker), `jose`, RxJS, Zod
 
-**Storage**: PostgreSQL through Prisma; Google Cloud Storage for intermediate uploaded files; generated grammar-example cache persisted in PostgreSQL
+**Storage**: PostgreSQL through Prisma; Google Cloud Storage for intermediate uploaded files, populated via direct client-to-bucket signed-URL uploads rather than backend-mediated writes; generated grammar-example cache persisted in PostgreSQL
 
 **Testing**: Vitest, `@nestjs/testing`, Supertest, TypeScript type-checking, generated OpenAPI verification
 
@@ -24,7 +26,7 @@ Implement the JLPT Study Material Generator backend by extending the current Nes
 
 **Performance Goals**: Accept 95% of valid text submissions within 2 seconds and valid supported file submissions within 3 seconds under expected load; stream terminal status for 99% of jobs without manual intervention
 
-**Constraints**: Must implement `./.agents/specs/openapi.json` exactly for observable API behavior; must satisfy `./.agents/specs/draft.md`; must not add libraries outside `package.json`; file inputs are PDF or plain text and must be smaller than 10 MB; CPU-intensive extraction and NLP analysis stay outside the NestJS service; the NLP worker returns results by enqueueing its own Cloud Task back to this service's private callback endpoint (not a direct synchronous call), authenticated via a Cloud Run IAM invoker binding plus in-app OIDC token verification
+**Constraints**: Must implement `./.agents/specs/openapi.json` exactly for observable API behavior; must satisfy `./.agents/specs/draft.md`; must not add libraries outside `package.json`; file inputs are PDF or plain text and must be smaller than 10 MB; file bytes must never be proxied through the NestJS process — learners obtain a backend-issued, short-lived (5-15 minute) signed URL and upload directly to GCS, and content submissions reference the resulting object key rather than attaching a file body; CPU-intensive extraction and NLP analysis stay outside the NestJS service; the NLP worker returns results by enqueueing its own Cloud Task back to this service's private callback endpoint (not a direct synchronous call), authenticated via a Cloud Run IAM invoker binding plus in-app OIDC token verification
 
 **Scale/Scope**: Single backend service coordinating authenticated learners, private groups, private content, async processing jobs, GCS uploads, Cloud Tasks dispatch, Gemini generation, and callback/result persistence
 
@@ -66,12 +68,17 @@ src/
 |-- auth/
 |-- group/
 |-- content/   # ContentModule: learner-facing CRUD; service layer split into
-|              # content-ingestion.service.ts (submission, GCS upload, Cloud Tasks dispatch)
-|              # and content-management.service.ts (list/move/delete)
+|              # content-ingestion.service.ts (signed-URL-referenced submission,
+|              # uploaded-object verification via StorageModule, Cloud Tasks dispatch —
+|              # no file bytes pass through this service) and content-management.service.ts
+|              # (list/move/delete)
 |-- job/       # JobModule: ProcessingJob lifecycle only — NLP worker result callback
 |              # (job.controller.ts, job-callback-auth.guard.ts) and the in-memory
 |              # status registry (job-status.service.ts) consumed by content's SSE endpoint
-|-- storage/
+|-- storage/   # StorageModule: issues short-lived V4 signed PUT URLs for direct
+|              # client-to-GCS uploads and verifies uploaded object metadata
+|              # (existence, size, content type) on request; never reads or writes
+|              # file bytes itself
 |-- nlp/       # NlpModule: dispatches chunking + vocabulary-matching jobs to the external
 |              # FastAPI NLP worker via Cloud Tasks and parses its callback payload only —
 |              # owns no grammar logic
@@ -93,7 +100,7 @@ specs/
 
 **Structure Decision**: Use a single NestJS backend project with feature modules by bounded context. Existing `auth`, `content`, `health`, and `job` modules are extended; new modules are added only for missing contract contexts (`group`) or real integration boundaries (`storage`, `nlp`, `llm`, `prisma`, `common`). Tests remain beside modules using the existing `*.spec.ts` convention.
 
-Within `content`, ingestion (submission, upload, dispatch) and management (listing, move, delete) are implemented as separate services — `content-ingestion.service.ts` and `content-management.service.ts` — behind one `ContentModule` and one `ContentController`, since the two responsibilities have different collaborators (Storage/NLP vs. Prisma-only) and different callers (learner submission vs. `GroupController` listing).
+Within `content`, ingestion (signed-URL issuance, object verification, dispatch) and management (listing, move, delete) are implemented as separate services — `content-ingestion.service.ts` and `content-management.service.ts` — behind one `ContentModule` and one `ContentController`, since the two responsibilities have different collaborators (Storage/NLP vs. Prisma-only) and different callers (learner submission vs. `GroupController` listing). `ContentController` exposes `POST /content/upload-url` (delegates to `StorageModule` to mint a signed URL, no file body accepted) in addition to the existing `POST /content` (now accepting either raw text or an `{objectKey, fileName, mimeType}` reference, never a multipart file body) and management endpoints.
 
 `job` owns the `ProcessingJob` entity's full lifecycle exclusively, including the inbound boundary with the private NLP worker: it is never called by learners directly. `GroupModule` and `ContentModule` import each other's exported services explicitly where a cross-module read is required (e.g., `GroupController` injecting `ContentManagementService`); shared infrastructure modules (`PrismaModule`, `StorageModule`, `NlpModule`, `LlmModule`) are likewise imported by name into each module that needs them rather than declared as `@Global()`, so each module's dependency graph stays visible from its own file.
 
@@ -104,6 +111,8 @@ Within `content`, ingestion (submission, upload, dispatch) and management (listi
 > **Still open (see chat)**: whether the Gemini-based grammar analysis runs synchronously inside the callback request handler before the HTTP response is returned to the worker's Cloud Task, or is dispatched as a further asynchronous step with `ProcessingJob.status` remaining `PROCESSING` and `currentStep` updated accordingly. This is a NestJS-internal orchestration decision and does not affect the FastAPI NLP worker's contract either way.
 
 Persisting the callback (chunked sentences, deduplicated vocabulary), performing grammar analysis, and flipping the `ProcessingJob` to a terminal state must together be idempotent, so a Cloud Tasks retry after a partial failure cannot double-write results or re-invoke Gemini redundantly. Using a worker-initiated Cloud Task rather than a direct HTTP call means delivery of the NLP worker's chunking/vocabulary output is retried automatically if this service is briefly unavailable, without re-running that NLP analysis itself.
+
+**Upload verification**: Requesting a signed URL is idempotent and side-effect-free beyond issuing a new URL for the same object path; it does not create a `Content` or `ProcessingJob` row. A `Content` row and its downstream Cloud Tasks dispatch are only created once, at `POST /content` time, after `StorageModule` confirms the referenced object exists, matches the declared content type, and is under the 10 MB limit — a repeated `POST /content` for an already-claimed `objectKey` must not be allowed to create a second `Content` record referencing the same upload.
 
 **Status Streaming**: Job status updates for `GET /content/{id}/status` are served entirely from the NestJS layer via an in-memory, per-job RxJS `BehaviorSubject` registry backed by the persisted `ProcessingJob` row — the microservice is never queried directly for status. A late SSE subscriber must immediately receive current state (not just future emissions), and a terminal state must both close the SSE stream and evict the subject from the registry.
 

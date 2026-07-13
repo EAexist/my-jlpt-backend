@@ -1,4 +1,4 @@
-﻿# Tasks: JLPT Backend API
+# Tasks: JLPT Backend API
 
 **Input**: Design documents from `/specs/001-jlpt-backend-api/`
 <!-- **Prerequisites**: plan.md, spec.md, research.md, data-model.md, contracts/external-api.md, quickstart.md -->
@@ -50,7 +50,7 @@
 
 ---
 
-## Phase 3: User Story 1 - Synchronize and access learner identity (Priority: P1) MVP
+## Phase 3: User Story 1 - Synchronize and access learner identity (Priority: P1)
 
 **Goal**: A learner can synchronize identity, retrieve the current profile, and protected profile access rejects invalid sessions.
 
@@ -91,22 +91,23 @@
 
 **Independent Test**: Submit one valid text payload or one valid supported file to a learner-owned group, verify `202` pending/processing content, simulate worker callback/result persistence, and retrieve the completed content shape.
 
-- [ ] T035 [docs|.standard-codes\ref-repos\zod\packages\docs\content\api.mdx,.standard-codes\ref-repos\zod\packages\docs\content\basics.mdx,.standard-codes\ref-repos\docs.nestjs\content\techniques\file-upload.md] [P] [US3] Replace content DTOs with multipart and response Zod schemas in src/content/content.schemas.ts
-- [ ] T036a [docs|.standard-codes\ref-repos\docs.nestjs\content\components.md,.standard-codes\ref-repos\docs.nestjs\content\techniques\file-upload.md] [US3] Implement text/file ingestion logic in src/content/content-ingestion.service.ts
+- [ ] T035 [docs|.standard-codes\ref-repos\zod\packages\docs\content\api.mdx,.standard-codes\ref-repos\zod\packages\docs\content\basics.mdx,.standard-codes\ref-repos\docs.nestjs\content\techniques\file-upload.md] [P] [US3] Define Zod request/response schemas for POST /content/upload-url and the JSON-based request body for POST /content in src/content/content.schemas.ts, removing all references to multipart/form-data.
+- [ ] T036a [docs|.standard-codes\ref-repos\docs.nestjs\content\components.md,.standard-codes\ref-repos\docs.nestjs\content\techniques\file-upload.md] [US3] Implement ContentIngestionService in src/content/content-ingestion.service.ts: (1) handle raw text submissions; (2) handle file-based submissions by verifying object metadata (existence, size, type) against the object key passed in the JSON request body using StorageService.
 - [ ] T036b [docs|.standard-codes\ref-repos\docs.nestjs\content\components.md,.standard-codes\ref-repos\docs.nestjs\content\recipes\prisma.md] [US3] Implement immediate content and job creation in src/content/content-ingestion.service.ts
 - [ ] T036c [docs|.standard-codes\ref-repos\google-cloud-node\packages\google-cloud-tasks\samples\generated\v2\cloud_tasks.create_task.js] [US3] Implement Cloud Tasks enqueueing in src/content/content-ingestion.service.ts
-- [ ] T037 [docs|.standard-codes\ref-repos\docs.nestjs\content\techniques\file-upload.md,.standard-codes\ref-repos\google-cloud-node\packages\google-storage-control\samples\quickstart.js] [US3] Implement GCS upload validation for PDF and text files under 10 MB in src/storage/storage.service.ts
+- [ ] T037 [docs|.standard-codes\ref-repos\docs.nestjs\content\techniques\file-upload.md,.standard-codes\ref-repos\google-cloud-node\packages\google-storage-control\samples\quickstart.js] [US3] Implement StorageService in src/storage/storage.service.ts: (1) create V4 signed PUT URLs (validating type constraints); (2) verify object existence, size, and content-type in GCS upon POST /content request.
 - [ ] T038 [docs|.standard-codes\ref-repos\docs.nestjs\content\components.md,.standard-codes\ref-repos\docs.nestjs\content\recipes\prisma.md] [US3] Implement worker result callback persistence and idempotent terminal updates in src/job/job.service.ts
 - [ ] T038a [docs|.standard-codes\ref-repos\docs.nestjs\content\guards.md,.standard-codes\ref-repos\google-cloud-node\packages\google-auth-library\samples\verifyIdToken.js] [US3] Implement OIDC identity-token verification guard for the NLP worker's callback caller in src/job/job-callback-auth.guard.ts
 - [ ] T038b [docs|.standard-codes\ref-repos\docs.nestjs\content\controllers.md,.standard-codes\ref-repos\docs.nestjs\content\guards.md] [US3] Implement POST /internal/jobs/{jobId}/callback, guarded by JobCallbackAuthGuard, invoking JobService result persistence in src/job/job.controller.ts
 - [ ] T038c [docs|.standard-codes\ref-repos\docs.nestjs\content\modules.md,.standard-codes\ref-repos\docs.nestjs\content\fundamentals\dependency-injection.md] [US3] Create JobModule registering JobController, JobService, and JobCallbackAuthGuard, importing PrismaModule and LlmModule, in src/job/job.module.ts
 - [ ] T039 [docs|.standard-codes\ref-repos\docs.nestjs\content\techniques\caching.md,.standard-codes\ref-repos\js-genai\docs\index.html] [US3] Implement grammar example cache lookup and Gemini cache miss generation in src/llm/grammar-example.service.ts
-- [ ] T040 [docs|.standard-codes\ref-repos\docs.nestjs\content\controllers.md,.standard-codes\ref-repos\docs.nestjs\content\techniques\file-upload.md] [US3] Implement POST /content multipart handling and GET /content/{id} in src/content/content.controller.ts
+- [ ] T040 [docs|.standard-codes\ref-repos\docs.nestjs\content\controllers.md,.standard-codes\ref-repos\docs.nestjs\content\techniques\file-upload.md] [US3] Implement controller methods in src/content/content.controller.ts: (1) POST /content/upload-url; (2) POST /content (accepting JSON request body only); (3) GET /content/{id}.
 - [ ] T040a [docs|.standard-codes\ref-repos\docs.nestjs\content\modules.md,.standard-codes\ref-repos\docs.nestjs\content\fundamentals\dependency-injection.md] [US3] Create ContentModule registering ContentController and ContentIngestionService, importing PrismaModule, StorageModule, and NlpModule, in src/content/content.module.ts
 - [ ] T032 [docs|.standard-codes\ref-repos\docs.nestjs\content\fundamentals\unit-testing.md,.standard-codes\ref-repos\docs.nestjs\content\techniques\file-upload.md,.standard-codes\ref-repos\docs.nestjs\content\openapi\operations.md] [test] [P] [US3] Add contract tests for POST /content and GET /content/{id} lifecycle shapes in src/content/content.contract.spec.ts
 - [ ] T033 [docs|.standard-codes\ref-repos\docs.nestjs\content\fundamentals\unit-testing.md,.standard-codes\ref-repos\docs.nestjs\content\techniques\file-upload.md,.standard-codes\ref-repos\zod\packages\docs\content\error-formatting.mdx] [test] [P] [US3] Add ingestion validation tests for exactly-one-source, file type, file size, and group ownership in src/content/content.ingestion.spec.ts
 - [ ] T041 [docs|.standard-codes\ref-repos\docs.nestjs\content\techniques\serialization.md,.standard-codes\ref-repos\zod\packages\docs\content\api.mdx] [US3] Map persisted content into ProcessingContent, FailedContent, and CompletedContent contract shapes in src/content/content.presenter.ts
 - [ ] T034 [docs|.standard-codes\ref-repos\docs.nestjs\content\fundamentals\unit-testing.md,.standard-codes\ref-repos\docs.nestjs\content\recipes\prisma.md,.standard-codes\ref-repos\js-genai\docs\index.html] [test] [P] [US3] Add generated result persistence tests for grammar examples and deduplicated vocabulary in src/job/job.service.spec.ts
+- [ ] T058 [test] [P] [US3] Add contract tests for POST /content/upload-url, verifying correct signature generation, learner scoping, and content-type validation, in src/content/content-ingestion.contract.spec.ts.
 
 **Checkpoint**: User Story 3 is fully functional and testable independently.
 

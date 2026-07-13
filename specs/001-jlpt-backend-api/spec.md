@@ -54,9 +54,11 @@ As a learner, I need to submit Japanese text or a supported file and receive str
 **Acceptance Scenarios**:
 
 1. **Given** an authenticated learner and a learner-owned group, **When** they submit a title plus Japanese text, **Then** the system accepts the work for processing and returns a pending or processing content record.
-2. **Given** an authenticated learner and a learner-owned group, **When** they submit a title plus one supported file, **Then** the system accepts the work for processing and returns a pending or processing content record.
-3. **Given** a completed content item, **When** the learner retrieves it, **Then** the system returns the original input reference, overall JLPT level, analyzed sentences, grammar points with examples, and deduplicated vocabulary.
-4. **Given** invalid ingestion input with neither text nor file, or with both text and file, **When** the learner submits it, **Then** the system rejects the request with a clear validation error.
+2. **Given** an authenticated learner, **When** they request a signed upload URL for a supported file, **Then** the system returns a short-lived signed URL and object key without accepting any file bytes itself.
+3. **Given** a learner holding a valid signed upload URL, **When** the client uploads the file directly to the storage bucket and then submits a title plus the resulting object reference to a learner-owned group, **Then** the system accepts the work for processing and returns a pending or processing content record.
+4. **Given** a completed content item, **When** the learner retrieves it, **Then** the system returns the original input reference, overall JLPT level, analyzed sentences, grammar points with examples, and deduplicated vocabulary.
+5. **Given** invalid ingestion input with neither text nor an object reference, or with both text and an object reference, **When** the learner submits it, **Then** the system rejects the request with a clear validation error.
+6. **Given** a content submission referencing an object key that was never uploaded, has expired, or does not belong to the requesting learner, **When** the learner submits it, **Then** the system rejects the request without dispatching any processing work.
 
 ---
 
@@ -98,6 +100,9 @@ As a learner, I need to list, move, inspect, and delete my saved content so that
 - Group names must reject invalid or unusable values while allowing normal learner naming needs.
 - Default groups cannot be renamed or deleted, and must remain available for content reassignment.
 - Content ingestion must reject unsupported file types, files at or above the configured size limit, empty text, and payloads that violate the one-source-only rule.
+- Signed upload URL requests must reject unsupported content types before a URL is ever issued, and issued URLs must expire automatically within a short, bounded window (5-15 minutes).
+- Content submissions that reference an object key must be rejected when the object was never uploaded, the signed URL expired before upload completed, the uploaded object exceeds the size limit, or the object key does not belong to the requesting learner.
+- The backend must never buffer or stream full file bytes through its own process for learner file uploads; file bytes travel only between the learner's client and the storage bucket.
 - Processing must tolerate retries without duplicating user-visible content or generating conflicting terminal results.
 - Failed processing must preserve enough information for the learner to understand the failure while preventing leakage of private implementation details.
 - Generated study material may include repeated vocabulary or grammar across sentences; learner-facing completed content must present a deduplicated vocabulary list.
@@ -116,10 +121,12 @@ As a learner, I need to list, move, inspect, and delete my saved content so that
 - **FR-007**: System MUST allow authenticated learners to create, list, read, and delete their own non-default groups.
 - **FR-008**: System MUST reassign content from a deleted non-default group to the learner's default group.
 - **FR-009**: System MUST allow authenticated learners to list content within a learner-owned group using pagination metadata that includes total, page, and limit.
-- **FR-010**: System MUST accept content ingestion only when a title, a learner-owned group, and exactly one source are provided: raw Japanese text or one supported file.
-- **FR-011**: System MUST support PDF and plain text file inputs up to, but not including, 10 MB.
-- **FR-012**: System MUST reject ingestion when both text and file are provided, when neither is provided, when the group is not learner-owned, or when validation fails.
-- **FR-013**: System MUST create a pending or processing content record immediately when valid ingestion work is accepted.
+- **FR-010**: System MUST accept content ingestion only when a title, a learner-owned group, and exactly one source are provided: raw Japanese text or a reference to one previously uploaded supported file.
+- **FR-010a**: System MUST provide an authenticated endpoint that, given an intended file name and content type, issues a short-lived (5-15 minute) signed URL authorizing a direct `PUT` upload to a specific object path in cloud storage, without accepting or transmitting any file bytes through the backend itself.
+- **FR-010b**: System MUST scope every signed upload URL and its resulting object key to the requesting learner, so an object key issued to one learner cannot be referenced or claimed by another learner's content submission.
+- **FR-011**: System MUST support PDF and plain text file inputs up to, but not including, 10 MB, validated at the point of signed URL issuance (content type) and again before processing is dispatched (object existence and size).
+- **FR-012**: System MUST reject ingestion when both text and a file reference are provided, when neither is provided, when the group is not learner-owned, when the referenced object key was never uploaded or has expired, or when validation fails.
+- **FR-013**: System MUST create a pending or processing content record immediately when valid ingestion work is accepted, only after confirming the referenced uploaded object exists and satisfies type and size constraints.
 - **FR-014**: System MUST process long-running text extraction, linguistic analysis, translation, grammar analysis, vocabulary extraction, and example generation asynchronously.
 - **FR-015**: System MUST expose the content lifecycle states PENDING, PROCESSING, COMPLETED, and FAILED exactly as externally specified.
 - **FR-016**: System MUST allow learners to retrieve any learner-owned content item in the shape appropriate to its current lifecycle state.
@@ -149,7 +156,7 @@ As a learner, I need to list, move, inspect, and delete my saved content so that
 - **Grammar Point**: Identified grammar pattern with JLPT level, explanation, and generated examples.
 - **Grammar Example**: Japanese example sentence and translation generated for a grammar point.
 - **Vocabulary Item**: Deduplicated vocabulary entry with reading, JLPT level, translation, synonyms, and example phrases.
-- **Uploaded File**: Learner-provided PDF or plain text source used as intermediate input for text extraction and analysis.
+- **Uploaded File**: Learner-provided PDF or plain text source uploaded directly from the client to cloud storage via a backend-issued signed URL, then referenced by object key as intermediate input for text extraction and analysis; the backend never receives the file bytes directly.
 
 ## Success Criteria *(mandatory)*
 
@@ -159,7 +166,8 @@ As a learner, I need to list, move, inspect, and delete my saved content so that
 - **SC-002**: 100% of protected learner workflows reject unauthenticated access and prevent cross-learner access in authorization testing.
 - **SC-003**: A learner can synchronize identity, retrieve profile, create a group, submit content, observe processing, retrieve completed study material, move it, and delete it in one end-to-end test flow.
 - **SC-004**: At least 95% of valid text submissions up to normal study-note size are accepted for processing and return a pending or processing record within 2 seconds under expected load.
-- **SC-005**: At least 95% of valid supported file submissions below 10 MB are accepted for processing and return a pending or processing record within 3 seconds under expected load.
+- **SC-005**: At least 95% of valid supported file submissions below 10 MB are accepted for processing and return a pending or processing record within 3 seconds under expected load, measured from the object-reference submission step (after the client's direct upload to storage completes).
+- **SC-005a**: 100% of file bytes for learner uploads travel directly between the client and cloud storage; zero requests in ingestion testing show the backend process buffering or streaming full file contents.
 - **SC-006**: Status tracking shows the learner a terminal completed or failed state for 99% of processing jobs without requiring manual intervention.
 - **SC-007**: Completed content includes exactly three examples for every generated grammar point in 100% of successful processing results.
 - **SC-008**: Vocabulary displayed on a completed content item contains no duplicate vocabulary words within the same content result in 100% of successful processing results.
@@ -174,5 +182,6 @@ As a learner, I need to list, move, inspect, and delete my saved content so that
 - Authentication is initiated by the client application; the backend is responsible for identity synchronization, session validation for protected workflows, ownership, and data isolation.
 - Study content, groups, jobs, and generated results are private by default and never shared across learners.
 - The file size rule means supported uploaded files must be smaller than 10 MB.
+- File uploads use a pre-signed URL handoff: the client requests a signed URL from the backend, uploads the file directly to cloud storage, and only then submits content referencing the resulting object key; the backend acts solely as an authorizer and never proxies raw file bytes.
 - Long-running processing may complete outside the learner's current browser session, so content retrieval remains the durable source of truth after completion.
 - If a current generated contract in the repository differs from `./.agents/specs/openapi.json`, the `.agents` OpenAPI specification takes precedence for this feature.
