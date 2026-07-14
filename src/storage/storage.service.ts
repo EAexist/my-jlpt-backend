@@ -14,14 +14,34 @@ export class StorageService {
       'jlpt-study-material-bucket';
   }
 
-  async uploadFile(filename: string, buffer: Buffer): Promise<string> {
+  async getSignedPutUrl(objectKey: string, contentType: string): Promise<string> {
     const bucket = this.storage.bucket(this.bucket);
-    const file = bucket.file(filename);
+    const file = bucket.file(objectKey);
 
-    await file.save(buffer, {
-      resumable: false,
+    const [url] = await file.getSignedUrl({
+      version: 'v4',
+      action: 'write',
+      expires: Date.now() + 15 * 60 * 1000, // 15 minutes
+      contentType: contentType,
     });
 
-    return `gs://${this.bucket}/${filename}`;
+    return url;
+  }
+
+  async verifyObjectMetadata(objectKey: string, expectedMimeType: string) {
+    const bucket = this.storage.bucket(this.bucket);
+    const file = bucket.file(objectKey);
+
+    const [metadata] = await file.getMetadata();
+    
+    if (metadata.contentType !== expectedMimeType) {
+      throw new Error('MIME type mismatch');
+    }
+
+    if (metadata.size && parseInt(String(metadata.size), 10) > 10 * 1024 * 1024) {
+      throw new Error('File exceeds 10MB limit');
+    }
+
+    return metadata;
   }
 }
