@@ -1,7 +1,9 @@
 import { Module } from '@nestjs/common';
+import { PrismaModule } from '../prisma/prisma.module';
 import { GrammarExampleService } from './grammar-example/grammar-example.service';
 
 @Module({
+  imports: [PrismaModule],
   providers: [GrammarExampleService],
   exports: [GrammarExampleService],
 })
