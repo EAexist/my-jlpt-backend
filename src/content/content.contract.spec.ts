@@ -3,6 +3,7 @@ import { Test } from '@nestjs/testing';
 import { INestApplication } from '@nestjs/common';
 import { AppModule } from '../app.module';
 import { PrismaService } from '../prisma/prisma.service';
+import { NlpTaskService } from '../nlp/nlp-task/nlp-task.service';
 
 describe('Content (e2e)', () => {
   let app: INestApplication;
@@ -25,6 +26,10 @@ describe('Content (e2e)', () => {
                 create: vi.fn().mockResolvedValue({ id: 'job-id' }),
             }
         }))
+      })
+      .overrideProvider(NlpTaskService)
+      .useValue({
+        dispatchNlpTask: vi.fn().mockResolvedValue({})
       })
       .compile();
 

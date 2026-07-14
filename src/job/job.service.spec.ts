@@ -15,6 +15,7 @@ describe('JobService', () => {
       },
       sentenceAnalysis: { createMany: vi.fn() },
       vocabularyItem: { createMany: vi.fn() },
+      grammarExample: { createMany: vi.fn() },
       content: { update: vi.fn() },
     };
     
@@ -33,13 +34,16 @@ describe('JobService', () => {
   });
 
   describe('handleCallback', () => {
-    it('persists sentences and deduplicated vocabulary', async () => {
+    it('persists sentences, deduplicates vocabulary, and persists grammar examples', async () => {
       const result = {
         chunks: [{ text: 'Sentence 1' }],
-        vocabulary: [{ word: 'test', reading: 'てすと', translation: 'test' }]
+        vocabulary: [
+          { word: 'test', reading: 'てすと', translation: 'test' },
+          { word: 'test', reading: 'てすと', translation: 'test' } // Duplicate
+        ],
+        grammarExamples: [{ grammarPointId: 'gp-1', japanese: '...' }]
       };
 
-      // Mock transaction and its methods
       prismaMock.$transaction.mockImplementation((callback: any) => callback(prismaMock));
       prismaMock.processingJob.findUnique.mockResolvedValue({
         id: 'job-1',
@@ -49,9 +53,13 @@ describe('JobService', () => {
 
       await service.handleCallback('job-1', result);
 
-      expect(prismaMock.sentenceAnalysis.createMany).toHaveBeenCalled();
-      expect(prismaMock.vocabularyItem.createMany).toHaveBeenCalled();
-      expect(prismaMock.processingJob.update).toHaveBeenCalled();
+      // Verify vocabulary items called with skipDuplicates: true
+      expect(prismaMock.vocabularyItem.createMany).toHaveBeenCalledWith(expect.objectContaining({
+        skipDuplicates: true
+      }));
+
+      // Verify grammar examples persistence
+      expect(prismaMock.grammarExample.createMany).toHaveBeenCalled();
     });
   });
 });

@@ -43,6 +43,18 @@ export class JobService {
         skipDuplicates: true,
       });
 
+      if (result.grammarExamples && result.grammarExamples.length > 0) {
+        await tx.grammarExample.createMany({
+          data: result.grammarExamples.map((ex: any) => ({
+            grammarPointId: ex.grammarPointId,
+            japanese: ex.japanese,
+            translation: ex.translation || '',
+            position: ex.position || 1,
+          })),
+        });
+      }
+
+
       await tx.processingJob.update({
         where: { id: jobId },
         data: {
