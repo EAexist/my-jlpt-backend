@@ -17,6 +17,9 @@ export class ContentIngestionService {
     fileName?: string;
     mimeType?: string;
   }) {
+    if (data.text && data.objectKey) {
+        throw new BadRequestException('Either text or objectKey must be provided, not both');
+    }
     if (data.text) {
       return this.handleTextSubmission(data.text);
     } else if (data.objectKey) {
