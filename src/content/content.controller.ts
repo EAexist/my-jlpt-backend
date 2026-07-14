@@ -3,40 +3,39 @@ import {
   Get,
   Post,
   Body,
-  Patch,
   Param,
-  Delete,
+  BadRequestException,
 } from '@nestjs/common';
-import { ContentService } from './content.service';
-import { CreateContentDto } from './dto/create-content.dto';
-import { UpdateContentDto } from './dto/update-content.dto';
+import { ContentIngestionService } from './content-ingestion/content-ingestion.service';
+import { StorageService } from '../storage/storage.service';
+import { PrismaService } from '../prisma/prisma.service';
 
 @Controller('content')
 export class ContentController {
-  constructor(private readonly contentService: ContentService) {}
+  constructor(
+    private readonly ingestionService: ContentIngestionService,
+    private readonly storageService: StorageService,
+    private readonly prisma: PrismaService,
+  ) {}
 
-  @Post()
-  create(@Body() createContentDto: CreateContentDto) {
-    return this.contentService.create(createContentDto);
+  @Post('/upload-url')
+  async uploadUrl(@Body() body: { fileName: string; mimeType: string }) {
+    const objectKey = `uploads/${Date.now()}-${body.fileName}`;
+    const url = await this.storageService.getSignedPutUrl(objectKey, body.mimeType);
+    return { url, objectKey, expiresAt: new Date(Date.now() + 15 * 60 * 1000) };
   }
 
-  @Get()
-  findAll() {
-    return this.contentService.findAll();
+  @Post()
+  async create(@Body() body: any) {
+    return await this.ingestionService.handleSubmission(body);
   }
 
   @Get(':id')
-  findOne(@Param('id') id: string) {
-    return this.contentService.findOne(+id);
-  }
-
-  @Patch(':id')
-  update(@Param('id') id: string, @Body() updateContentDto: UpdateContentDto) {
-    return this.contentService.update(+id, updateContentDto);
-  }
-
-  @Delete(':id')
-  remove(@Param('id') id: string) {
-    return this.contentService.remove(+id);
+  async findOne(@Param('id') id: string) {
+    const content = await this.prisma.content.findUnique({ where: { id } });
+    if (!content) {
+      throw new BadRequestException('Content not found');
+    }
+    return content;
   }
 }
