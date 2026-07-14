@@ -1,6 +1,8 @@
 import { Test, TestingModule } from '@nestjs/testing';
 import { ContentController } from './content.controller';
-import { ContentService } from './content.service';
+import { ContentIngestionService } from './content-ingestion/content-ingestion.service';
+import { StorageService } from '../storage/storage.service';
+import { PrismaService } from '../prisma/prisma.service';
 
 describe('ContentController', () => {
   let controller: ContentController;
@@ -8,7 +10,11 @@ describe('ContentController', () => {
   beforeEach(async () => {
     const module: TestingModule = await Test.createTestingModule({
       controllers: [ContentController],
-      providers: [ContentService],
+      providers: [
+        { provide: ContentIngestionService, useValue: { handleSubmission: vi.fn() } },
+        { provide: StorageService, useValue: { getSignedPutUrl: vi.fn() } },
+        { provide: PrismaService, useValue: { content: { findUnique: vi.fn() } } },
+      ],
     }).compile();
 
     controller = module.get<ContentController>(ContentController);
