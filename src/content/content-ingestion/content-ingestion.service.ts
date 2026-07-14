@@ -1,12 +1,14 @@
 import { Injectable, BadRequestException } from '@nestjs/common';
 import { StorageService } from '../../storage/storage.service';
 import { PrismaService } from '../../prisma/prisma.service';
+import { NlpTaskService } from '../../nlp/nlp-task/nlp-task.service';
 
 @Injectable()
 export class ContentIngestionService {
   constructor(
     private readonly storageService: StorageService,
     private readonly prisma: PrismaService,
+    private readonly nlpTaskService: NlpTaskService,
   ) {}
 
   async handleSubmission(data: {
@@ -50,6 +52,11 @@ export class ContentIngestionService {
           status: 'PENDING',
           idempotencyKey: content.id,
         },
+      });
+
+      await this.nlpTaskService.dispatchNlpTask({
+        contentId: content.id,
+        ...data,
       });
 
       return content;
