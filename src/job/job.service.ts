@@ -1,4 +1,60 @@
-import { Injectable } from '@nestjs/common';
+import { Injectable, BadRequestException } from '@nestjs/common';
+import { PrismaService } from '../prisma/prisma.service';
 
 @Injectable()
-export class JobService {}
+export class JobService {
+  constructor(private readonly prisma: PrismaService) {}
+
+  async handleCallback(jobId: string, result: any) {
+    return await this.prisma.$transaction(async (tx) => {
+      const job = await tx.processingJob.findUnique({
+        where: { id: jobId },
+        include: { content: true },
+      });
+
+      if (!job) {
+        throw new BadRequestException('Job not found');
+      }
+
+      if (job.status === 'COMPLETED') {
+        return; // Already processed
+      }
+
+      // Persist results
+      const contentId = job.contentId;
+      await tx.sentenceAnalysis.createMany({
+        data: result.chunks.map((chunk: any, index: number) => ({
+          contentId,
+          position: index,
+          text: chunk.text,
+          translation: '', // Placeholder
+          level: 'N5',
+        })),
+      });
+
+      await tx.vocabularyItem.createMany({
+        data: result.vocabulary.map((vocab: any) => ({
+          contentId,
+          word: vocab.word,
+          reading: vocab.reading,
+          level: vocab.level || null,
+          translation: vocab.translation || '',
+        })),
+        skipDuplicates: true,
+      });
+
+      await tx.processingJob.update({
+        where: { id: jobId },
+        data: {
+          status: 'COMPLETED',
+          completedAt: new Date(),
+        },
+      });
+
+      await tx.content.update({
+        where: { id: contentId },
+        data: { status: 'COMPLETED' },
+      });
+    });
+  }
+}
