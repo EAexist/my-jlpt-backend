@@ -17,6 +17,8 @@ describe('JobService', () => {
 
     // Clean up
     await prisma.processingJob.deleteMany();
+    await prisma.sentenceAnalysis.deleteMany();
+    await prisma.vocabularyItem.deleteMany();
     await prisma.content.deleteMany();
     await prisma.group.deleteMany();
     await prisma.learner.deleteMany();
