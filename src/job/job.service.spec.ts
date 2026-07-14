@@ -1,14 +1,23 @@
 import { Test, TestingModule } from '@nestjs/testing';
 import { JobService } from './job.service';
 import { PrismaService } from '../prisma/prisma.service';
-import { mockDeep, DeepMockProxy } from 'vitest-mock-extended';
 
 describe('JobService', () => {
   let service: JobService;
-  let prismaMock: DeepMockProxy<PrismaService>;
+  let prismaMock: any;
 
   beforeEach(async () => {
-    prismaMock = mockDeep<PrismaService>();
+    prismaMock = {
+      $transaction: vi.fn(),
+      processingJob: {
+        findUnique: vi.fn(),
+        update: vi.fn(),
+      },
+      sentenceAnalysis: { createMany: vi.fn() },
+      vocabularyItem: { createMany: vi.fn() },
+      content: { update: vi.fn() },
+    };
+    
     const module: TestingModule = await Test.createTestingModule({
       providers: [
         JobService,
