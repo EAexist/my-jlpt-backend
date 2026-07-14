@@ -49,7 +49,7 @@ export const CreateContentRequestSchema = z
     title: z.string().min(1),
     groupId: z.string().uuid(),
     text: z.string().optional(),
-    inputFile: z
+    inputReference: z
       .object({
         objectKey: z.string().uuid(),
         fileName: z.string().min(1),
@@ -57,9 +57,9 @@ export const CreateContentRequestSchema = z
       })
       .optional(),
   })
-  .refine((data) => !!data.text !== !!data.inputFile, {
-    message: "Exactly one of 'text' or 'inputFile' must be provided.",
-    path: ['text', 'inputFile'],
+  .refine((data) => !!data.text !== !!data.inputReference, {
+    message: "Exactly one of 'text' or 'inputReference' must be provided.",
+    path: ['text', 'inputReference'],
   });
 
 // Content Response Schemas
