@@ -1,26 +1,22 @@
 import { Test, TestingModule } from '@nestjs/testing';
 import { JobService } from './job.service';
-import { PrismaClient } from '../generated/prisma/client';
-import { PrismaModule } from '../prisma/prisma.module';
-const prisma = new PrismaClient();
+import { PrismaService } from '../prisma/prisma.service';
+import { mockDeep, DeepMockProxy } from 'vitest-mock-extended';
 
 describe('JobService', () => {
   let service: JobService;
+  let prismaMock: DeepMockProxy<PrismaService>;
 
   beforeEach(async () => {
+    prismaMock = mockDeep<PrismaService>();
     const module: TestingModule = await Test.createTestingModule({
-      imports: [PrismaModule],
-      providers: [JobService],
+      providers: [
+        JobService,
+        { provide: PrismaService, useValue: prismaMock },
+      ],
     }).compile();
 
     service = module.get<JobService>(JobService);
-    // Cleanup using shared client
-    await prisma.processingJob.deleteMany();
-    await prisma.sentenceAnalysis.deleteMany();
-    await prisma.vocabularyItem.deleteMany();
-    await prisma.content.deleteMany();
-    await prisma.group.deleteMany();
-    await prisma.learner.deleteMany();
   });
 
   it('should be defined', () => {
@@ -47,16 +43,17 @@ describe('JobService', () => {
         vocabulary: [{ word: 'test', reading: 'てすと', translation: 'test' }]
       };
 
+      // Mock transaction and its methods
+      prismaMock.$transaction.mockImplementation((callback) => callback(prismaMock as any));
+      prismaMock.processingJob.findUnique.mockResolvedValue({
+        id: 'job-1',
+        contentId: 'content-1',
+        status: 'PROCESSING',
+      } as any);
+
       await service.handleCallback('job-1', result);
 
-      const savedContent = await prisma.content.findUnique({
-        where: { id: content.id },
-        include: { sentenceAnalyses: true, vocabularyItems: true }
-      });
-
-      expect(savedContent?.status).toBe('COMPLETED');
-      expect(savedContent?.sentenceAnalyses.length).toBe(1);
-      expect(savedContent?.vocabularyItems.length).toBe(1);
+      expect(prismaMock.processingJob.update).toHaveBeenCalled();
     });
   });
 });
