@@ -16,7 +16,15 @@ describe('Content (e2e)', () => {
         content: {
             findUnique: vi.fn(),
             create: vi.fn(),
-        }
+        },
+        $transaction: vi.fn((callback) => callback({
+            content: {
+                create: vi.fn().mockResolvedValue({ id: 'mock-id' }),
+            },
+            processingJob: {
+                create: vi.fn().mockResolvedValue({ id: 'job-id' }),
+            }
+        }))
       })
       .compile();
 
