@@ -1,7 +1,8 @@
 import { Test, TestingModule } from '@nestjs/testing';
 import { JobService } from './job.service';
-import { PrismaService } from '../prisma/prisma.service';
+import { PrismaClient } from '../generated/prisma/client';
 import { PrismaModule } from '../prisma/prisma.module';
+const prisma = new PrismaClient();
 
 describe('JobService', () => {
   let service: JobService;
@@ -13,9 +14,7 @@ describe('JobService', () => {
     }).compile();
 
     service = module.get<JobService>(JobService);
-    const prisma = module.get<PrismaService>(PrismaService);
-
-    // Clean up
+    // Cleanup using shared client
     await prisma.processingJob.deleteMany();
     await prisma.sentenceAnalysis.deleteMany();
     await prisma.vocabularyItem.deleteMany();
@@ -31,7 +30,6 @@ describe('JobService', () => {
   describe('handleCallback', () => {
     it('persists sentences and deduplicated vocabulary', async () => {
       // Mock db setup
-      const prisma = new PrismaService();
       const learner = await prisma.learner.create({ data: { provider: 'test', providerAccountId: '1' } });
       const group = await prisma.group.create({ data: { name: 'default', ownerId: learner.id } });
       const content = await prisma.content.create({ data: { title: 'Test', groupId: group.id, ownerId: learner.id } });
