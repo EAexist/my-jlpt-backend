@@ -3,7 +3,6 @@ import { Test } from '@nestjs/testing';
 import { INestApplication } from '@nestjs/common';
 import { AppModule } from '../app.module';
 import { PrismaService } from '../prisma/prisma.service';
-import { mockDeep } from 'vitest-mock-extended';
 
 describe('Content (e2e)', () => {
   let app: INestApplication;
@@ -13,7 +12,12 @@ describe('Content (e2e)', () => {
       imports: [AppModule],
     })
       .overrideProvider(PrismaService)
-      .useValue(mockDeep<PrismaService>())
+      .useValue({
+        content: {
+            findUnique: vi.fn(),
+            create: vi.fn(),
+        }
+      })
       .compile();
 
     app = moduleFixture.createNestApplication();
