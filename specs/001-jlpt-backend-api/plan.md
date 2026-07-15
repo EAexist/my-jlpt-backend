@@ -67,24 +67,26 @@ src/
 |-- health/
 |-- auth/
 |-- group/
-|-- content/   # ContentModule: learner-facing CRUD; service layer split into
-|              # content-ingestion.service.ts (signed-URL-referenced submission,
-|              # uploaded-object verification via StorageModule, Cloud Tasks dispatch —
-|              # no file bytes pass through this service) and content-management.service.ts
-|              # (list/move/delete)
-|-- job/       # JobModule: ProcessingJob lifecycle only — NLP worker result callback
-|              # (job.controller.ts, job-callback-auth.guard.ts) and the in-memory
-|              # status registry (job-status.service.ts) consumed by content's SSE endpoint
-|-- storage/   # StorageModule: issues short-lived V4 signed PUT URLs for direct
-|              # client-to-GCS uploads and verifies uploaded object metadata
-|              # (existence, size, content type) on request; never reads or writes
-|              # file bytes itself
-|-- nlp/       # NlpModule: dispatches chunking + vocabulary-matching jobs to the external
-|              # FastAPI NLP worker via Cloud Tasks and parses its callback payload only —
-|              # owns no grammar logic
-|-- llm/       # LlmModule: Gemini-backed (`@google/genai`) grammar-pattern identification,
-|              # per-grammar-point example generation via GrammarExampleCache, and
-|              # Content.overallLevel computation
+|-- content/   # ContentModule
+|   |-- content-ingestion/
+|   |   |-- content-ingestion.service.ts
+|   |   |-- content-ingestion.schemas.ts
+|   |   |-- content-ingestion.spec.ts
+|   |   `-- content-ingestion.contract.spec.ts
+|   |-- content-management/
+|   |   |-- content-management.service.ts
+|   |   |-- content-management.service.spec.ts
+|   |   |-- content-management.schemas.ts
+|   |   `-- content-management.contract.spec.ts
+|   |-- content.controller.ts
+|   |-- content.module.ts
+|   |-- content.presenter.ts
+|   `-- entities/
+|       `-- content.entity.ts
+|-- job/       # JobModule
+|-- storage/   # StorageModule
+|-- nlp/       # NlpModule
+|-- llm/       # LlmModule
 |-- prisma/
 `-- common/
 

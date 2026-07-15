@@ -91,18 +91,18 @@
 
 **Independent Test**: Submit one valid text payload or one valid supported file to a learner-owned group, verify `202` pending/processing content, simulate worker callback/result persistence, and retrieve the completed content shape.
 
-- [ ] T035 [P] [US3] Define Zod request/response schemas for POST /content/upload-url and the JSON-based request body for POST /content in src/content/content.schemas.ts, removing all references to multipart/form-data.
-- [ ] T036a [US3] Implement ContentIngestionService in src/content/content-ingestion.service.ts: (1) handle raw text submissions; (2) handle file-based submissions by verifying object metadata (existence, size, type) against the object key passed in the JSON request body using StorageService.
-- [ ] T036b [US3] Implement immediate content and job creation in src/content/content-ingestion.service.ts
-- [ ] T036c [US3] Implement Cloud Tasks enqueueing in src/content/content-ingestion.service.ts
+- [ ] T035 [P] [US3] Define Zod request/response schemas for POST /content/upload-url and the JSON-based request body for POST /content in src/content/content-ingestion/content-ingestion.schemas.ts, removing all references to multipart/form-data.
+- [ ] T036a [US3] Implement ContentIngestionService in src/content/content-ingestion/content-ingestion.service.ts: (1) handle raw text submissions; (2) handle file-based submissions by verifying object metadata (existence, size, type) against the object key passed in the JSON request body using StorageService.
+- [ ] T036b [US3] Implement immediate content and job creation in src/content/content-ingestion/content-ingestion.service.ts
+- [ ] T036c [US3] Implement Cloud Tasks enqueueing in src/content/content-ingestion/content-ingestion.service.ts
 - [ ] T037 [US3] Implement StorageService in src/storage/storage.service.ts: (1) create V4 signed PUT URLs (validating type constraints); (2) verify object existence, size, and content-type in GCS upon POST /content request.
 - [ ] T038 [US3] Implement worker result callback persistence and idempotent terminal updates in src/job/job.service.ts
 - [ ] T038a [US3] Implement OIDC identity-token verification guard for the NLP worker's callback caller in src/job/job-callback-auth.guard.ts
 - [ ] T038b [US3] Implement POST /internal/jobs/{jobId}/callback, guarded by JobCallbackAuthGuard, invoking JobService result persistence in src/job/job.controller.ts
 - [ ] T039 [US3] Implement grammar example cache lookup and Gemini cache miss generation in src/llm/grammar-example.service.ts
 - [ ] T040 [US3] Implement controller methods in src/content/content.controller.ts: (1) POST /content/upload-url; (2) POST /content (accepting JSON request body only); (3) GET /content/{id}.
-- [ ] T032 [test] [P] [US3] Add contract tests for POST /content and GET /content/{id} lifecycle shapes in src/content/content.contract.spec.ts
-- [ ] T033 [test] [P] [US3] Add ingestion validation tests for exactly-one-source, file type, file size, and group ownership in src/content/content.ingestion.spec.ts
+- [ ] T032 [test] [P] [US3] Add contract tests for POST /content and GET /content/{id} lifecycle shapes in src/content/content-ingestion/content-ingestion.contract.spec.ts
+- [ ] T033 [test] [P] [US3] Add ingestion validation tests for exactly-one-source, file type, file size, and group ownership in src/content/content-ingestion/content-ingestion.spec.ts
 - [ ] T041 [US3] Map persisted content into ProcessingContent, FailedContent, and CompletedContent contract shapes in src/content/content.presenter.ts
 - [ ] T034 [test] [P] [US3] Add generated result persistence tests for grammar examples and deduplicated vocabulary in src/job/job.service.spec.ts
 - [ ] T058 [test] [P] [US3] Add contract tests for POST /content/upload-url, verifying correct signature generation, learner scoping, and content-type validation, in src/content/content-ingestion.contract.spec.ts.
@@ -134,15 +134,15 @@
 
 **Independent Test**: Create multiple content records, list a group with pagination, move a content item to another owned group, delete it, and verify cross-learner access, move, status tracking, and deletion are refused.
 
-- [ ] T049 [P] [US5] Add pagination and move-content Zod schemas in src/content/content-management.schemas.ts
-- [ ] T050 [US5] Implement paginated group content listing in src/content/content-management.service.ts
-- [ ] T051 [US5] Implement content move and delete-with-job behavior in src/content/content-management.service.ts
-- [ ] T051a [US5] Register ContentManagementService as a provider and export of ContentModule in src/content/content.module.ts
-- [ ] T048 [test] [P] [US5] Add content ownership, pagination, move, and delete service tests in src/content/content-management.service.spec.ts
+- [ ] T049 [P] [US5] Add pagination and move-content Zod schemas in src/content/content-management/content-management.schemas.ts
+- [ ] T050 [US5] Implement paginated group content listing in src/content/content-management/content-management.service.ts
+- [ ] T051 [US5] Implement content move and delete-with-job behavior in src/content/content-management/content-management.service.ts
+- [ ] T051a [US5] Register ContentManagementService as a provider and export of ContentModule in src/content/content-management/content-management.module.ts
+- [ ] T048 [test] [P] [US5] Add content ownership, pagination, move, and delete service tests in src/content/content-management/content-management.service.spec.ts
 - [ ] T051b [US5] Update GroupModule to import ContentModule so GroupController can inject ContentManagementService in src/group/group.module.ts
 - [ ] T052 [US5] Add GET /groups/{groupId}/content to GroupController using ContentManagementService in src/group/group.controller.ts
 - [ ] T053 [US5] Implement PATCH /content/{id} and DELETE /content/{id} in src/content/content.controller.ts
-- [ ] T047 [test] [P] [US5] Add contract tests for GET /groups/{groupId}/content, PATCH /content/{id}, and DELETE /content/{id} in src/content/content-management.contract.spec.ts
+- [ ] T047 [test] [P] [US5] Add contract tests for GET /groups/{groupId}/content, PATCH /content/{id}, and DELETE /content/{id} in src/content/content-management/content-management.contract.spec.ts
 
 **Checkpoint**: User Story 5 is fully functional and testable independently.
 
