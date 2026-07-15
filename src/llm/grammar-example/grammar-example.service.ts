@@ -25,7 +25,7 @@ export class GrammarExampleService {
       contents: `Generate 3 Japanese grammar examples for: ${grammarPoint}. Return as JSON array of objects with "japanese" and "translation" keys.`,
     });
 
-    const examples = JSON.parse(response.text() || '[]') as any[];
+    const examples = JSON.parse(response.text || '[]') as any[];
 
     await this.prisma.grammarExampleCache.create({
       data: {
