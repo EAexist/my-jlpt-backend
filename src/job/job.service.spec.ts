@@ -18,12 +18,9 @@ describe('JobService', () => {
       grammarExample: { createMany: vi.fn() },
       content: { update: vi.fn() },
     };
-    
+
     const module: TestingModule = await Test.createTestingModule({
-      providers: [
-        JobService,
-        { provide: PrismaService, useValue: prismaMock },
-      ],
+      providers: [JobService, { provide: PrismaService, useValue: prismaMock }],
     }).compile();
 
     service = module.get<JobService>(JobService);
@@ -39,12 +36,14 @@ describe('JobService', () => {
         chunks: [{ text: 'Sentence 1' }],
         vocabulary: [
           { word: 'test', reading: 'てすと', translation: 'test' },
-          { word: 'test', reading: 'てすと', translation: 'test' } // Duplicate
+          { word: 'test', reading: 'てすと', translation: 'test' }, // Duplicate
         ],
-        grammarExamples: [{ grammarPointId: 'gp-1', japanese: '...' }]
+        grammarExamples: [{ grammarPointId: 'gp-1', japanese: '...' }],
       };
 
-      prismaMock.$transaction.mockImplementation((callback: any) => callback(prismaMock));
+      prismaMock.$transaction.mockImplementation((callback: any) =>
+        callback(prismaMock),
+      );
       prismaMock.processingJob.findUnique.mockResolvedValue({
         id: 'job-1',
         contentId: 'content-1',
@@ -53,13 +52,24 @@ describe('JobService', () => {
 
       await service.handleCallback('job-1', result);
 
-      // Verify vocabulary items called with skipDuplicates: true
-      expect(prismaMock.vocabularyItem.createMany).toHaveBeenCalledWith(expect.objectContaining({
-        skipDuplicates: true
-      }));
+      // Verify vocabulary items called with skipDuplicates: true and data
+      expect(prismaMock.vocabularyItem.createMany).toHaveBeenCalledWith(
+        expect.objectContaining({
+          data: expect.arrayContaining([
+            expect.objectContaining({ word: 'test', reading: 'てすと' }),
+          ]),
+          skipDuplicates: true,
+        }),
+      );
 
       // Verify grammar examples persistence
-      expect(prismaMock.grammarExample.createMany).toHaveBeenCalled();
+      expect(prismaMock.grammarExample.createMany).toHaveBeenCalledWith(
+        expect.objectContaining({
+          data: expect.arrayContaining([
+            expect.objectContaining({ grammarPointId: 'gp-1', japanese: '...' }),
+          ]),
+        }),
+      );
     });
   });
 });
