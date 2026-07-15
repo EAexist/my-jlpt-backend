@@ -16,7 +16,7 @@ export class JobService {
         throw new BadRequestException('Job not found');
       }
 
-      if (job.status === 'COMPLETED') {
+      if (job.status === 'COMPLETED' || job.status === 'FAILED') {
         return; // Already processed
       }
 
@@ -54,12 +54,13 @@ export class JobService {
         });
       }
 
-
+      // Update job status to COMPLETED
       await tx.processingJob.update({
         where: { id: jobId },
         data: {
           status: 'COMPLETED',
           completedAt: new Date(),
+          currentStep: 'COMPLETED',
         },
       });
 

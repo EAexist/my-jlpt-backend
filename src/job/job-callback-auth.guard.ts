@@ -17,7 +17,9 @@ export class JobCallbackAuthGuard implements CanActivate {
     const authHeader = request.headers.authorization;
 
     if (!authHeader || !authHeader.startsWith('Bearer ')) {
-      throw new UnauthorizedException('Missing or invalid Authorization header');
+      throw new UnauthorizedException(
+        'Missing or invalid Authorization header',
+      );
     }
 
     const token = authHeader.split(' ')[1];
@@ -38,7 +40,7 @@ export class JobCallbackAuthGuard implements CanActivate {
 
       (request as any).user = payload;
       return true;
-    } catch (error) {
+    } catch {
       throw new UnauthorizedException('Token verification failed');
     }
   }
