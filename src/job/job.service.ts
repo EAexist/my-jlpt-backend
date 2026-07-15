@@ -1,9 +1,13 @@
 import { Injectable, BadRequestException } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
+import { JobStatusService } from './job-status/job-status.service';
 
 @Injectable()
 export class JobService {
-  constructor(private readonly prisma: PrismaService) {}
+  constructor(
+    private readonly prisma: PrismaService,
+    private readonly jobStatusService: JobStatusService,
+  ) {}
 
   async handleCallback(jobId: string, result: any) {
     return await this.prisma.$transaction(async (tx) => {
@@ -55,7 +59,7 @@ export class JobService {
       }
 
       // Update job status to COMPLETED
-      await tx.processingJob.update({
+      const updatedJob = await tx.processingJob.update({
         where: { id: jobId },
         data: {
           status: 'COMPLETED',
@@ -68,6 +72,8 @@ export class JobService {
         where: { id: contentId },
         data: { status: 'COMPLETED' },
       });
+
+      this.jobStatusService.updateJobStatus(updatedJob);
     });
   }
 }
