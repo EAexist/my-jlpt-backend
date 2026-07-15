@@ -15,21 +15,23 @@ describe('Content (e2e)', () => {
       .overrideProvider(PrismaService)
       .useValue({
         content: {
-            findUnique: vi.fn(),
-            create: vi.fn(),
+          findUnique: vi.fn(),
+          create: vi.fn(),
         },
-        $transaction: vi.fn((callback) => callback({
+        $transaction: vi.fn((callback) =>
+          callback({
             content: {
-                create: vi.fn().mockResolvedValue({ id: 'mock-id' }),
+              create: vi.fn().mockResolvedValue({ id: 'mock-id' }),
             },
             processingJob: {
-                create: vi.fn().mockResolvedValue({ id: 'job-id' }),
-            }
-        }))
+              create: vi.fn().mockResolvedValue({ id: 'job-id' }),
+            },
+          }),
+        ),
       })
       .overrideProvider(NlpTaskService)
       .useValue({
-        dispatchNlpTask: vi.fn().mockResolvedValue({})
+        dispatchNlpTask: vi.fn().mockResolvedValue({}),
       })
       .compile();
 

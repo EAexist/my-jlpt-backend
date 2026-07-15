@@ -1,7 +1,7 @@
-import { Injectable, BadRequestException } from '@nestjs/common';
-import { StorageService } from '../../storage/storage.service';
-import { PrismaService } from '../../prisma/prisma.service';
+import { BadRequestException, Injectable } from '@nestjs/common';
 import { NlpTaskService } from '../../nlp/nlp-task/nlp-task.service';
+import { PrismaService } from '../../prisma/prisma.service';
+import { StorageService } from '../../storage/storage.service';
 
 @Injectable()
 export class ContentIngestionService {
@@ -18,14 +18,22 @@ export class ContentIngestionService {
     mimeType?: string;
   }) {
     if (data.text && data.objectKey) {
-        throw new BadRequestException('Either text or objectKey must be provided, not both');
+      throw new BadRequestException(
+        'Either text or objectKey must be provided, not both',
+      );
     }
     if (data.text) {
       return this.handleTextSubmission(data.text);
     } else if (data.objectKey) {
-      return this.handleFileSubmission(data.objectKey, data.fileName, data.mimeType);
+      return this.handleFileSubmission(
+        data.objectKey,
+        data.fileName,
+        data.mimeType,
+      );
     } else {
-      throw new BadRequestException('Either text or objectKey must be provided');
+      throw new BadRequestException(
+        'Either text or objectKey must be provided',
+      );
     }
   }
 
@@ -70,16 +78,25 @@ export class ContentIngestionService {
     return await this.createContent({ text });
   }
 
-  private async handleFileSubmission(objectKey: string, fileName?: string, mimeType?: string) {
+  private async handleFileSubmission(
+    objectKey: string,
+    fileName?: string,
+    mimeType?: string,
+  ) {
     // Verification logic
-    const file = this.storageService['storage'].bucket(this.storageService['bucket']).file(objectKey);
+    const file = this.storageService['storage']
+      .bucket(this.storageService['bucket'])
+      .file(objectKey);
     const [metadata] = await file.getMetadata();
 
     if (!metadata) {
       throw new BadRequestException('File not found');
     }
 
-    if (metadata.size && parseInt(String(metadata.size), 10) > 10 * 1024 * 1024) {
+    if (
+      metadata.size &&
+      parseInt(String(metadata.size), 10) > 10 * 1024 * 1024
+    ) {
       throw new BadRequestException('File exceeds 10MB');
     }
 

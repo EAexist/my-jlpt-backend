@@ -28,13 +28,15 @@ export interface CompletedContent extends BaseContent {
 
 @Injectable()
 export class ContentPresenter {
-  mapToResponse(content: ContentEntity & {
-    sentenceAnalyses?: any[];
-    vocabularyItems?: any[];
-  }): BaseContent | ProcessingContent | FailedContent | CompletedContent {
+  mapToResponse(
+    content: ContentEntity & {
+      sentenceAnalyses?: any[];
+      vocabularyItems?: any[];
+    },
+  ): BaseContent | ProcessingContent | FailedContent | CompletedContent {
     const base: BaseContent = {
       id: content.id,
-      status: content.status as any,
+      status: content.status,
       title: content.title,
       groupId: content.groupId,
       input_text: content.inputText,
@@ -46,7 +48,7 @@ export class ContentPresenter {
         ...base,
         status: 'FAILED',
         error_message: content.errorMessage || 'Unknown error',
-      } as FailedContent;
+      };
     }
 
     if (content.status === 'COMPLETED') {
@@ -56,13 +58,13 @@ export class ContentPresenter {
         overall_level: this.mapLevel(content.overallLevel),
         sentences: content.sentenceAnalyses || [],
         vocabulary: content.vocabularyItems || [],
-      } as CompletedContent;
+      };
     }
 
     return {
       ...base,
-      status: content.status as 'PENDING' | 'PROCESSING',
-    } as ProcessingContent;
+      status: content.status,
+    };
   }
 
   private mapLevel(level: number | null): 'N1' | 'N2' | 'N3' | 'N4' | 'N5' {

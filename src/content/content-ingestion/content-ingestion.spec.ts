@@ -1,9 +1,9 @@
-import { Test, TestingModule } from '@nestjs/testing';
-import { ContentIngestionService } from './content-ingestion.service';
-import { StorageService } from '../../storage/storage.service';
-import { PrismaService } from '../../prisma/prisma.service';
-import { NlpTaskService } from '../../nlp/nlp-task/nlp-task.service';
 import { BadRequestException } from '@nestjs/common';
+import { Test, TestingModule } from '@nestjs/testing';
+import { NlpTaskService } from '../../nlp/nlp-task/nlp-task.service';
+import { PrismaService } from '../../prisma/prisma.service';
+import { StorageService } from '../../storage/storage.service';
+import { ContentIngestionService } from './content-ingestion.service';
 
 describe('ContentIngestionService (Validation)', () => {
   let service: ContentIngestionService;
@@ -15,17 +15,21 @@ describe('ContentIngestionService (Validation)', () => {
     mockStorageService = {
       storage: {
         bucket: () => ({
-            file: () => ({
-                getMetadata: vi.fn().mockResolvedValue([{ size: 5 * 1024 * 1024, type: 'text/plain' }])
-            })
-        })
+          file: () => ({
+            getMetadata: vi
+              .fn()
+              .mockResolvedValue([
+                { size: 5 * 1024 * 1024, type: 'text/plain' },
+              ]),
+          }),
+        }),
       },
-      bucket: 'test-bucket'
+      bucket: 'test-bucket',
     };
     mockPrismaService = {
-        content: { create: vi.fn().mockResolvedValue({ id: 'test-id' }) },
-        processingJob: { create: vi.fn() },
-        $transaction: vi.fn((callback) => callback(mockPrismaService))
+      content: { create: vi.fn().mockResolvedValue({ id: 'test-id' }) },
+      processingJob: { create: vi.fn() },
+      $transaction: vi.fn((callback) => callback(mockPrismaService)),
     };
     mockNlpTaskService = { dispatchNlpTask: vi.fn() };
 
@@ -43,16 +47,26 @@ describe('ContentIngestionService (Validation)', () => {
 
   it('should reject when both text and objectKey are provided', async () => {
     // Call the original method which has validation check
-    await expect(service.handleSubmission({ text: 'hi', objectKey: 'key' }))
-      .rejects.toThrow(BadRequestException);
+    await expect(
+      service.handleSubmission({ text: 'hi', objectKey: 'key' }),
+    ).rejects.toThrow(BadRequestException);
   });
 
   it('should reject files exceeding 10MB', async () => {
-    mockStorageService.getMetadata = vi.fn().mockResolvedValue([{ size: 15 * 1024 * 1024 }]);
+    mockStorageService.getMetadata = vi
+      .fn()
+      .mockResolvedValue([{ size: 15 * 1024 * 1024 }]);
     // Use the actual logic, fix in Service if needed
     // Assuming file path structure for test: storage['storage'].bucket(...).file(...)
-    mockStorageService['storage'] = { bucket: () => ({ file: () => ({ getMetadata: vi.fn().mockResolvedValue([{ size: 15 * 1024 * 1024 }]) }) }) };
-    await expect(service.handleSubmission({ objectKey: 'test-key.txt' }))
-      .rejects.toThrow('File exceeds 10MB');
+    mockStorageService['storage'] = {
+      bucket: () => ({
+        file: () => ({
+          getMetadata: vi.fn().mockResolvedValue([{ size: 15 * 1024 * 1024 }]),
+        }),
+      }),
+    };
+    await expect(
+      service.handleSubmission({ objectKey: 'test-key.txt' }),
+    ).rejects.toThrow('File exceeds 10MB');
   });
 });

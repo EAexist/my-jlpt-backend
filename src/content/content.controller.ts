@@ -1,14 +1,14 @@
 import {
+  BadRequestException,
+  Body,
   Controller,
   Get,
-  Post,
-  Body,
   Param,
-  BadRequestException,
+  Post,
 } from '@nestjs/common';
-import { ContentIngestionService } from './content-ingestion/content-ingestion.service';
-import { StorageService } from '../storage/storage.service';
 import { PrismaService } from '../prisma/prisma.service';
+import { StorageService } from '../storage/storage.service';
+import { ContentIngestionService } from './content-ingestion/content-ingestion.service';
 
 @Controller('content')
 export class ContentController {
@@ -21,7 +21,10 @@ export class ContentController {
   @Post('/upload-url')
   async uploadUrl(@Body() body: { fileName: string; mimeType: string }) {
     const objectKey = `uploads/${Date.now()}-${body.fileName}`;
-    const url = await this.storageService.getSignedPutUrl(objectKey, body.mimeType);
+    const url = await this.storageService.getSignedPutUrl(
+      objectKey,
+      body.mimeType,
+    );
     return { url, objectKey, expiresAt: new Date(Date.now() + 15 * 60 * 1000) };
   }
 
