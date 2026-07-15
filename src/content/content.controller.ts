@@ -5,7 +5,21 @@ import {
   Get,
   Param,
   Post,
+  UsePipes,
+  ValidationPipe,
 } from '@nestjs/common';
+import { IsString, IsNotEmpty } from 'class-validator';
+
+class UploadUrlDto {
+  @IsString()
+  @IsNotEmpty()
+  fileName: string;
+
+  @IsString()
+  @IsNotEmpty()
+  mimeType: string;
+}
+
 import { PrismaService } from '../prisma/prisma.service';
 import { StorageService } from '../storage/storage.service';
 import { ContentIngestionService } from './content-ingestion/content-ingestion.service';
@@ -19,7 +33,11 @@ export class ContentController {
   ) {}
 
   @Post('/upload-url')
-  async uploadUrl(@Body() body: { fileName: string; mimeType: string }) {
+  @UsePipes(new ValidationPipe({ whitelist: true }))
+  async uploadUrl(@Body() body: UploadUrlDto) {
+    if (!['application/pdf', 'text/plain'].includes(body.mimeType)) {
+      throw new BadRequestException('Unsupported MIME type');
+    }
     const objectKey = `uploads/${Date.now()}-${body.fileName}`;
     const url = await this.storageService.getSignedPutUrl(
       objectKey,
