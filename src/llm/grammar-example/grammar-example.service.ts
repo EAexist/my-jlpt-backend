@@ -16,26 +16,25 @@ export class GrammarExampleService {
     });
 
     if (cached) {
-      return (cached.examples as any)[0]; // Simplification for demo
+      return cached.examples as any[];
     }
 
     // Cache miss: Generate via Gemini
     const response = await this.client.models.generateContent({
       model: 'gemini-1.5-flash',
-      contents: `Generate 3 Japanese grammar examples for: ${grammarPoint}. Return as JSON with japanese, translation.`,
+      contents: `Generate 3 Japanese grammar examples for: ${grammarPoint}. Return as JSON array of objects with "japanese" and "translation" keys.`,
     });
 
-    const examples = JSON.parse(response.text || '[]');
-    
-    // Save to cache
+    const examples = JSON.parse(response.text() || '[]') as any[];
+
     await this.prisma.grammarExampleCache.create({
       data: {
         patternName: grammarPoint,
         level: level ? parseInt(level, 10) : null,
-        examples: JSON.stringify(examples),
+        examples: examples,
       },
     });
 
-    return examples[0];
+    return examples;
   }
 }
