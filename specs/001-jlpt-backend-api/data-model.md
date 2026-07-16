@@ -53,7 +53,7 @@ Learner-owned container for organizing content.
 - Groups are private to the owning learner.
 - The default group is returned first in listings.
 - Default groups cannot be deleted or renamed.
-- Deleting a non-default group reassigns its content to the learner's default group.
+- Deleting a group reassigns its content to the learner's default group.
 - `contentCount` is returned as derived data.
 
 ## Content
@@ -82,7 +82,6 @@ Learner-owned study material request and result.
 - Belongs to one `Group`
 - Has one `ProcessingJob`
 - Has many `SentenceAnalysis` records
-- Has many deduplicated `VocabularyItem` records
 
 **Validation and rules**
 
@@ -143,90 +142,59 @@ Analysis for one sentence in completed content.
 - `text`: Japanese sentence text
 - `translation`: translated sentence text
 - `level`: JLPT level
-- `similarPatterns`: string list
 
 **Relationships**
 
 - Belongs to one `Content`
-- Has many `GrammarPoint` records
+- Has many `GrammarPattern` (Many-to-Many)
+- Has many `VocabularyItem` (Many-to-Many)
 
 **Validation and rules**
 
 - Sentence order is stable.
 - Completed content returns all sentence analyses for that content.
-- **Resolved**: one `SentenceAnalysis` row corresponds to one NLP-worker chunk of 2-3 *original* sentences (the worker first segments the input into individual sentences, then groups consecutive sentences into chunks — see the FastAPI NLP service spec for the exact grouping algorithm). Grouping exists only to avoid a chunk of a single very short sentence; `text` is the chunk's full original text, not a single grammatical sentence.
+- **Resolved**: one `SentenceAnalysis` row corresponds to one NLP-worker chunk of 2-3 *original* sentences. Grouping exists only to avoid a chunk of a single very short sentence; `text` is the chunk's full original text, not a single grammatical sentence.
 - **Resolved**: `translation` is entirely NestJS's responsibility (`llm` module via Gemini). The NLP worker does not produce translations.
-- `similarPatterns` and grammar-adjacent classification are populated by the `llm` module, not the NLP worker.
 
-## GrammarPoint
+## GrammarPattern
 
-Grammar pattern identified in a sentence.
+Canonical grammar pattern entity.
 
 **Fields**
 
 - `id`: UUID
-- `sentenceAnalysisId`: sentence analysis UUID
-- `name`: pattern name
+- `name`: unique pattern name
 - `level`: JLPT level
 - `description`: learner-facing explanation
 
 **Relationships**
 
-- Belongs to one `SentenceAnalysis`
-- Has exactly three `GrammarExample` records in completed output
-- May reference cached examples by pattern name
-
-**Validation and rules**
-
-- Completed output must include exactly three examples per grammar point.
-- Identical grammar patterns should reuse cached examples when available.
-- Grammar pattern identification (which patterns exist in a given sentence) is performed by the `llm` module via Gemini. This is a change from prior versions of this spec, in which grammar identification was an NLP-worker responsibility.
+- Has many `GrammarExample` records
+- Many-to-Many with `SentenceAnalysis`
 
 ## GrammarExample
 
-Generated Japanese example sentence and translation.
+Generated Japanese example sentence and translation for a pattern.
 
 **Fields**
 
 - `id`: UUID
-- `grammarPointId`: grammar point UUID
+- `grammarPatternId`: FK to `GrammarPattern`
 - `japanese`: Japanese example sentence
 - `translation`: translated example
-- `position`: integer from 1 through 3
+- `position`: 1-3
 
 **Relationships**
 
-- Belongs to one `GrammarPoint`
-
-**Validation and rules**
-
-- Exactly three examples are returned for each completed grammar point.
-
-## GrammarExampleCache
-
-Reusable cached examples for identical grammar patterns.
-
-**Fields**
-
-- `patternName`: unique grammar pattern key
-- `level`: nullable JLPT level
-- `examples`: three example sentence/translation pairs
-- `createdAt`: timestamp
-- `updatedAt`: timestamp
-
-**Validation and rules**
-
-- Cache entries must preserve consistent examples for identical grammar patterns.
-- Cache misses may invoke Gemini; cache hits must avoid duplicate generation.
+- Belongs to one `GrammarPattern`
 
 ## VocabularyItem
 
-Deduplicated vocabulary entry for completed content.
+Canonical vocabulary entry.
 
 **Fields**
 
 - `id`: UUID
-- `contentId`: content UUID
 - `word`: Japanese word
 - `reading`: reading
 - `level`: JLPT level
@@ -236,12 +204,11 @@ Deduplicated vocabulary entry for completed content.
 
 **Relationships**
 
-- Belongs to one `Content`
+- Many-to-Many with `SentenceAnalysis`
 
 **Validation and rules**
 
-- Vocabulary is deduplicated per content result by normalized word and reading.
-- Required fields match the external contract.
+- Unique by normalized `(word, reading)`.
 - **Resolved**: the NLP worker returns only dictionary-matchable fields — `word` (dictionary/lemma form), `reading`, `level` (nullable, JLPT-list lookup), and `translation` (nullable, primary JMDict gloss). Tokens with no dictionary match are omitted by the worker entirely (not returned as partial items).
 - **Resolved**: `synonyms` and `examplePhrases` are NOT produced by the NLP worker (JMDict/JLPT-list matching does not reliably provide these). They are out of the NLP worker's scope; population strategy (LLM-generated, left empty, or a later enhancement) is a NestJS-side decision outside this data model's NLP-worker contract.
 
@@ -271,4 +238,4 @@ Intermediate metadata for files uploaded directly to cloud storage by the learne
 - Only PDF and plain text content types are accepted, and are validated when the signed URL is requested, before any URL is issued.
 - **Resolved (upload path)**: the NestJS service no longer receives file bytes at all. It generates a short-lived signed `PUT` URL via `@google-cloud/storage` for a specific object path; the learner's client performs the `PUT` directly against GCS. The backend's only remaining responsibilities are authorizing the request, generating the URL, and later verifying the resulting object (existence, size, content type) before dispatching processing — it stores and dispatches file references and performs no document parsing.
 - An `objectKey` moves from `AWAITING_UPLOAD` to `CONFIRMED` only when content creation verifies the object exists in the bucket and satisfies size/type constraints; it is treated as `EXPIRED` (and rejected) if referenced after `signedUrlExpiresAt` without a confirmed upload.
-- **Resolved**: PDF/text-to-plain-text extraction is still performed by the FastAPI NLP worker, as a precursor step before its chunking step (it must have plain text before sentence segmentation). This keeps CPU-intensive parsing, and now also file-byte transfer, outside the NestJS service, consistent with this plan's existing constraint, and avoids adding PDF-parsing dependencies to `package.json`.
+- **Resolved**: PDF/text-to-plain-text extraction is performed by the external NLP worker. This keeps CPU-intensive parsing and file-byte transfer outside the NestJS service and avoids adding PDF-parsing dependencies to `package.json`.

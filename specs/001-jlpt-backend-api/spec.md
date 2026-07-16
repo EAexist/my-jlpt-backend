@@ -4,6 +4,8 @@
 
 **Created**: 2026-06-23
 
+**Updated**: 2026-07-17
+
 **Status**: Draft
 
 **Input**: User description: "a nestjs app that inherits current codebase, and strictly implements requirements on ./.agents/specs/openapi.json and ./.agents/specs/draft.md."
@@ -32,20 +34,21 @@ As a learner, I need private groups for organizing generated study materials so 
 
 **Why this priority**: Group ownership and organization are core to content privacy and navigation across all generated study materials.
 
-**Independent Test**: Can be fully tested by creating a learner, listing the learner's groups, creating a new group, reading a group, deleting a non-default group, and confirming content reassignment behavior.
+**Independent Test**: Can be fully tested by creating a learner, listing the learner's groups, creating a new group, reading a group, deleting a non-default group, and confirming the cascade deletion and trash can recovery behavior.
 
 **Acceptance Scenarios**:
 
 1. **Given** an authenticated learner, **When** they list groups, **Then** the system returns only groups owned by that learner and includes the protected default group first.
 2. **Given** an authenticated learner, **When** they create a group with a valid name, **Then** the system adds the group under that learner's private ownership.
-3. **Given** a non-default group containing content, **When** the learner deletes the group, **Then** the system reassigns that content to the learner's default group.
-4. **Given** the learner's default group, **When** deletion is attempted, **Then** the system rejects the action and preserves the group.
+3. **Given** a non-default group containing content, **When** the learner deletes the group, **Then** the system cascades the deletion of the group and its contained content, while moving the items to a protected trash container.
+4. **Given** the learner's trash container, **When** the learner selects deleted content, **Then** they can either permanently remove the items or restore them to a valid group.
+5. **Given** the learner's default group, **When** deletion is attempted, **Then** the system rejects the action and preserves the group.
 
 ---
 
 ### User Story 3 - Generate study material from Japanese text or files (Priority: P1)
 
-As a learner, I need to submit Japanese text or a supported file and receive structured JLPT study material so that I can study translations, sentence-level analysis, grammar patterns, examples, and vocabulary from my own materials.
+As a learner, I need to submit Japanese text or a supported file and receive structured JLPT study material so that I can study translations, segment-level analysis, grammar patterns, examples, and vocabulary from my own materials.
 
 **Why this priority**: This is the primary user value of the product and the main reason learners use the backend service.
 
@@ -56,7 +59,7 @@ As a learner, I need to submit Japanese text or a supported file and receive str
 1. **Given** an authenticated learner and a learner-owned group, **When** they submit a title plus Japanese text, **Then** the system accepts the work for processing and returns a pending or processing content record.
 2. **Given** an authenticated learner, **When** they request a signed upload URL for a supported file, **Then** the system returns a short-lived signed URL and object key without accepting any file bytes itself.
 3. **Given** a learner holding a valid signed upload URL, **When** the client uploads the file directly to the storage bucket and then submits a title plus the resulting object reference to a learner-owned group, **Then** the system accepts the work for processing and returns a pending or processing content record.
-4. **Given** a completed content item, **When** the learner retrieves it, **Then** the system returns the original input reference, overall JLPT level, analyzed sentences, grammar points with examples, and deduplicated vocabulary.
+4. **Given** a completed content item, **When** the learner retrieves it, **Then** the system returns the title, analyzed segments, and associated grammar patterns and vocabulary derived specifically for each segment.
 5. **Given** invalid ingestion input with neither text nor an object reference, or with both text and an object reference, **When** the learner submits it, **Then** the system rejects the request with a clear validation error.
 6. **Given** a content submission referencing an object key that was never uploaded, has expired, or does not belong to the requesting learner, **When** the learner submits it, **Then** the system rejects the request without dispatching any processing work.
 
@@ -80,9 +83,9 @@ As a learner, I need live status updates while study material is being generated
 
 ### User Story 5 - Manage existing content (Priority: P2)
 
-As a learner, I need to list, move, inspect, and delete my saved content so that my study library stays organized and private over time.
+As a learner, I need to list, move, inspect, and delete my saved content so that my study content stays organized and private over time.
 
-**Why this priority**: Once content is generated, learners need lifecycle controls to keep their library useful.
+**Why this priority**: Once content is generated, learners need lifecycle controls to keep their study content useful.
 
 **Independent Test**: Can be fully tested by creating multiple content records, listing a group with pagination, moving a content item to another learner-owned group, deleting it, and verifying inaccessible records are not returned.
 
@@ -90,7 +93,7 @@ As a learner, I need to list, move, inspect, and delete my saved content so that
 
 1. **Given** a learner-owned group with multiple content records, **When** the learner lists group content with pagination settings, **Then** the system returns the requested page and pagination metadata.
 2. **Given** a learner-owned content item and another learner-owned group, **When** the learner moves the content, **Then** the content is associated with the target group.
-3. **Given** a learner-owned content item, **When** the learner deletes it, **Then** the system removes the content and associated processing record from the learner's library.
+3. **Given** a learner-owned content item, **When** the learner deletes it, **Then** the system removes the content and associated processing record from the learner's study content.
 4. **Given** content owned by another learner, **When** access, move, status tracking, or deletion is attempted, **Then** the system refuses access.
 
 ### Edge Cases
@@ -99,13 +102,11 @@ As a learner, I need to list, move, inspect, and delete my saved content so that
 - A learner may have an email, display name, or avatar absent from the upstream identity; synchronization must still work when the provider account identifier is valid.
 - Group names must reject invalid or unusable values while allowing normal learner naming needs.
 - Default groups cannot be renamed or deleted, and must remain available for content reassignment.
-- Content ingestion must reject unsupported file types, files at or above the configured size limit, empty text, and payloads that violate the one-source-only rule.
 - Signed upload URL requests must reject unsupported content types before a URL is ever issued, and issued URLs must expire automatically within a short, bounded window (5-15 minutes).
-- Content submissions that reference an object key must be rejected when the object was never uploaded, the signed URL expired before upload completed, the uploaded object exceeds the size limit, or the object key does not belong to the requesting learner.
+- Content submissions that reference an object key must be rejected when the object was never uploaded, the signed URL expired before upload completed, or the object key does not belong to the requesting learner.
 - The backend must never buffer or stream full file bytes through its own process for learner file uploads; file bytes travel only between the learner's client and the storage bucket.
 - Processing must tolerate retries without duplicating user-visible content or generating conflicting terminal results.
 - Failed processing must preserve enough information for the learner to understand the failure while preventing leakage of private implementation details.
-- Generated study material may include repeated vocabulary or grammar across sentences; learner-facing completed content must present a deduplicated vocabulary list.
 - Pagination requests outside available ranges must return a predictable empty or bounded result rather than an error caused by the range itself.
 
 ## Requirements *(mandatory)*
@@ -127,14 +128,13 @@ As a learner, I need to list, move, inspect, and delete my saved content so that
 - **FR-011**: System MUST support PDF and plain text file inputs up to, but not including, 10 MB, validated at the point of signed URL issuance (content type) and again before processing is dispatched (object existence and size).
 - **FR-012**: System MUST reject ingestion when both text and a file reference are provided, when neither is provided, when the group is not learner-owned, when the referenced object key was never uploaded or has expired, or when validation fails.
 - **FR-013**: System MUST create a pending or processing content record immediately when valid ingestion work is accepted, only after confirming the referenced uploaded object exists and satisfies type and size constraints.
-- **FR-014**: System MUST process long-running text extraction, linguistic analysis, translation, grammar analysis, vocabulary extraction, and example generation asynchronously.
 - **FR-015**: System MUST expose the content lifecycle states PENDING, PROCESSING, COMPLETED, and FAILED exactly as externally specified.
 - **FR-016**: System MUST allow learners to retrieve any learner-owned content item in the shape appropriate to its current lifecycle state.
-- **FR-017**: System MUST return completed content with original input reference, title, group, creation time, overall JLPT level, sentence analyses, grammar point details, and deduplicated vocabulary.
-- **FR-018**: System MUST include Japanese sentence text, translation, JLPT level, grammar points, and similar patterns for each analyzed sentence.
-- **FR-019**: System MUST include grammar pattern name, JLPT level, explanation, and exactly three example sentences with translations for each generated grammar point.
-- **FR-020**: System MUST include word, reading, JLPT level, translation, synonyms, and example phrases for each generated vocabulary item.
-- **FR-021**: System MUST cache generated example sentences for identical grammar patterns to avoid unnecessary duplicate generation and keep repeated results consistent.
+- **FR-017**: System MUST return completed content with title, group, creation time, segment analyses (including grammar pattern details and vocabulary items).
+- **FR-018**: System MUST include Japanese text, translation and grammar patterns for each analyzed segment, where a segment is a group of 1-3 consecutive original sentences combined to reach a reasonable minimum analysis length (not necessarily a single grammatical sentence).
+- **FR-019**: System MUST include grammar pattern name, JLPT level, explanation, and exactly three example sentences with translations for each generated grammar pattern.
+- **FR-020**: System MUST include word, reading, JLPT level, and translation for each generated vocabulary item. Synonyms and example phrases SHOULD be included when available but are NOT a release-blocking requirement; guaranteed population of these two fields is a lower-priority future enhancement.
+- **FR-021**: System MUST persist generated example sentences for grammar patterns to avoid unnecessary duplicate generation and keep repeated results consistent.
 - **FR-022**: System MUST allow learners to move learner-owned content to another learner-owned group.
 - **FR-023**: System MUST allow learners to delete learner-owned content and the associated processing record.
 - **FR-024**: System MUST stream learner-authorized processing status updates that include lifecycle state of if microservice is processing or completed.
@@ -143,8 +143,6 @@ As a learner, I need to list, move, inspect, and delete my saved content so that
 - **FR-025**: System MUST return failed content with a user-readable error message when processing cannot complete.
 - **FR-026**: System MUST distinguish unauthenticated, unauthorized, not found, and validation/business-rule failures using the error categories required by the external contract.
 - **FR-027**: System MUST implement the externally observable behavior, schemas, status codes, validation rules, and response shapes defined in `./.agents/specs/openapi.json`.
-- **FR-028**: System MUST satisfy the architectural, security, reliability, scalability, persistence, caching, and infrastructure requirements defined in `./.agents/specs/draft.md`.
-- **FR-029**: System MUST preserve existing completed behavior from the current backend unless it conflicts with `./.agents/specs/openapi.json` or `./.agents/specs/draft.md`, in which case those requirement files take precedence.
 
 ### Key Entities
 
@@ -152,10 +150,10 @@ As a learner, I need to list, move, inspect, and delete my saved content so that
 - **Group**: Learner-owned organizational container for content; includes a protected default group and learner-created groups.
 - **Content**: Learner-owned study material request and result; includes title, group association, input reference, lifecycle status, timestamps, and terminal result or failure details.
 - **Processing Job**: Asynchronous work item associated with content generation; tracks lifecycle, progress, retries, and terminal outcome.
-- **Sentence Analysis**: Learner-facing analysis of one Japanese sentence, including translation, JLPT level, grammar points, and similar patterns.
-- **Grammar Point**: Identified grammar pattern with JLPT level, explanation, and generated examples.
-- **Grammar Example**: Japanese example sentence and translation generated for a grammar point.
-- **Vocabulary Item**: Deduplicated vocabulary entry with reading, JLPT level, translation, synonyms, and example phrases.
+- **Segment Analysis**: Learner-facing analysis of one text segment — a group of 1-3 consecutive original sentences combined to reach a reasonable minimum analysis length — including translation, JLPT level, and grammar points.
+- **Grammar Pattern**: Identified grammar pattern with JLPT level, explanation, and generated examples.
+- **Grammar Example**: Japanese example sentence and translation generated for a grammar pattern.
+- **Vocabulary Item**: Deduplicated vocabulary entry with reading, JLPT level, and translation; synonyms and example phrases are optional fields, populated as a future enhancement rather than a current guarantee.
 - **Uploaded File**: Learner-provided PDF or plain text source uploaded directly from the client to cloud storage via a backend-issued signed URL, then referenced by object key as intermediate input for text extraction and analysis; the backend never receives the file bytes directly.
 
 ## Success Criteria *(mandatory)*
@@ -169,7 +167,7 @@ As a learner, I need to list, move, inspect, and delete my saved content so that
 - **SC-005**: At least 95% of valid supported file submissions below 10 MB are accepted for processing and return a pending or processing record within 3 seconds under expected load, measured from the object-reference submission step (after the client's direct upload to storage completes).
 - **SC-005a**: 100% of file bytes for learner uploads travel directly between the client and cloud storage; zero requests in ingestion testing show the backend process buffering or streaming full file contents.
 - **SC-006**: Status tracking shows the learner a terminal completed or failed state for 99% of processing jobs without requiring manual intervention.
-- **SC-007**: Completed content includes exactly three examples for every generated grammar point in 100% of successful processing results.
+- **SC-007**: Completed content includes exactly three examples for every generated grammar pattern in 100% of successful processing results.
 - **SC-008**: Vocabulary displayed on a completed content item contains no duplicate vocabulary words within the same content result in 100% of successful processing results.
 - **SC-009**: Repeated processing retries do not create duplicate learner-visible content records for the same accepted job in reliability testing.
 - **SC-010**: Learners can list and navigate paginated group content with accurate total, page, and limit metadata in 100% of pagination acceptance tests.
@@ -177,11 +175,9 @@ As a learner, I need to list, move, inspect, and delete my saved content so that
 ## Assumptions
 
 - The external API contract in `./.agents/specs/openapi.json` is the binding source for externally observable behavior.
-- The architecture and non-functional requirements in `./.agents/specs/draft.md` are binding unless later superseded by an approved plan.
 - The existing backend codebase is the starting point and should be extended in place rather than replaced.
 - Authentication is initiated by the client application; the backend is responsible for identity synchronization, session validation for protected workflows, ownership, and data isolation.
 - Study content, groups, jobs, and generated results are private by default and never shared across learners.
-- The file size rule means supported uploaded files must be smaller than 10 MB.
 - File uploads use a pre-signed URL handoff: the client requests a signed URL from the backend, uploads the file directly to cloud storage, and only then submits content referencing the resulting object key; the backend acts solely as an authorizer and never proxies raw file bytes.
 - Long-running processing may complete outside the learner's current browser session, so content retrieval remains the durable source of truth after completion.
 - If a current generated contract in the repository differs from `./.agents/specs/openapi.json`, the `.agents` OpenAPI specification takes precedence for this feature.

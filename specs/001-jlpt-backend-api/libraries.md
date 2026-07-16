@@ -10,7 +10,6 @@
 - **Prisma 6** — PostgreSQL ORM; persists `ProcessingJob`, generated grammar-example cache, chunked sentences, deduplicated vocabulary; all writes tied to callback idempotency requirements.
 - **@google-cloud/tasks** — dispatches async jobs (chunking + vocabulary-matching) to external FastAPI NLP worker; NLP worker also uses Cloud Tasks to enqueue its own result callback back to this service (retryable delivery).
 - **@google-cloud/storage** — stores intermediate uploaded files (PDF/text, <10MB) during content ingestion.
-- **google-auth-library** — verifies Google-signed OIDC identity tokens on the private `POST /internal/jobs/{jobId}/callback` endpoint (defense-in-depth alongside Cloud Run IAM invoker binding); distinct from learner-facing auth.
 - **jose** — verifies learner-facing bearer tokens (JWT) for authenticated API access.
 - **@google/genai** — Gemini client used by `llm` module for (1) grammar-pattern identification per sentence chunk and (2) per-grammar-point example generation, computing `Content.overallLevel`; runs after NLP worker callback, consuming its sentence-chunk output.
 - **RxJS** — in-memory per-job `BehaviorSubject` registry powering SSE status streaming (`GET /content/{id}/status`); late subscribers get current state immediately; terminal state closes stream and evicts subject.
@@ -23,7 +22,7 @@
 |---|---|
 | auth | jose |
 | content | @google-cloud/storage, @google-cloud/tasks, Prisma, Zod |
-| job | Prisma, google-auth-library, RxJS |
+| job | Prisma, RxJS |
 | storage | @google-cloud/storage |
 | nlp | @google-cloud/tasks (dispatch only; no grammar logic) |
 | llm | @google/genai, Prisma (grammar-example cache) |

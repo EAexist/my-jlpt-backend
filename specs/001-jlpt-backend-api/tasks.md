@@ -97,8 +97,6 @@
 - [ ] T036c [US3] Implement Cloud Tasks enqueueing in src/content/content-ingestion/content-ingestion.service.ts
 - [ ] T037 [US3] Implement StorageService in src/storage/storage.service.ts: (1) create V4 signed PUT URLs (validating type constraints); (2) verify object existence, size, and content-type in GCS upon POST /content request.
 - [ ] T038 [US3] Implement worker result callback persistence and idempotent terminal updates in src/job/job.service.ts
-- [ ] T038a [US3] Implement OIDC identity-token verification guard for the NLP worker's callback caller in src/job/job-callback-auth.guard.ts
-- [ ] T038b [US3] Implement POST /internal/jobs/{jobId}/callback, guarded by JobCallbackAuthGuard, invoking JobService result persistence in src/job/job.controller.ts
 - [ ] T039 [US3] Implement grammar example cache lookup and Gemini cache miss generation in src/llm/grammar-example.service.ts
 - [ ] T040 [US3] Implement controller methods in src/content/content.controller.ts: (1) POST /content/upload-url; (2) POST /content (accepting JSON request body only); (3) GET /content/{id}.
 - [ ] T032 [test] [P] [US3] Add contract tests for POST /content and GET /content/{id} lifecycle shapes in src/content/content-ingestion/content-ingestion.contract.spec.ts
