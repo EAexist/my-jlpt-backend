@@ -18,7 +18,9 @@ describe('ContentIngestionController (Contract) - POST /content/upload-url', () 
       .compile();
 
     app = moduleFixture.createNestApplication();
-    app.useGlobalPipes(new ValidationPipe({ whitelist: true, forbidNonWhitelisted: true }));
+    app.useGlobalPipes(
+      new ValidationPipe({ whitelist: true, forbidNonWhitelisted: true }),
+    );
     await app.init();
   });
 

@@ -32,4 +32,3 @@ export class JobStatusService implements OnModuleDestroy {
     this.registry.clear();
   }
 }
-

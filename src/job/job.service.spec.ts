@@ -66,7 +66,10 @@ describe('JobService', () => {
       expect(prismaMock.grammarExample.createMany).toHaveBeenCalledWith(
         expect.objectContaining({
           data: expect.arrayContaining([
-            expect.objectContaining({ grammarPointId: 'gp-1', japanese: '...' }),
+            expect.objectContaining({
+              grammarPointId: 'gp-1',
+              japanese: '...',
+            }),
           ]),
         }),
       );
