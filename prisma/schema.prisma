@@ -16,6 +16,9 @@ enum ContentStatus {
   PROCESSING
   COMPLETED
   FAILED
+  AWAITING_UPLOAD
+  CONFIRMED
+  EXPIRED
 }
 
 model Learner {
@@ -41,6 +44,8 @@ model Group {
   updatedAt DateTime  @updatedAt
   learner   Learner   @relation(fields: [ownerId], references: [id])
   contents  Content[]
+
+  @@index([ownerId])
 }
 
 model Content {
@@ -48,7 +53,7 @@ model Content {
   ownerId            String
   groupId            String
   title              String
-  inputText          String?
+  lexical            Json?
   inputFileObjectKey String?
   inputFileName      String?
   inputMimeType      String?
@@ -59,9 +64,12 @@ model Content {
   updatedAt          DateTime        @updatedAt
   group              Group           @relation(fields: [groupId], references: [id])
   processingJob      ProcessingJob?
-  sentenceAnalyses   SentenceAnalysis[]
-  vocabularyItems    VocabularyItem[]
+  sections           Section[]
   uploadedFiles      UploadedFile[]
+
+  @@index([ownerId])
+  @@index([groupId])
+  @@index([status, createdAt])
 }
 
 model ProcessingJob {
@@ -80,64 +88,62 @@ model ProcessingJob {
   content          Content       @relation(fields: [contentId], references: [id])
 }
 
-model SentenceAnalysis {
-  id              String        @id @default(uuid())
+model Section {
+  id              String           @id @default(uuid())
   contentId       String
-  position        Int
-  text            String
+  lexical         Json
   translation     String
   level           Int?
-  similarPatterns String[]
-  content         Content       @relation(fields: [contentId], references: [id])
-  grammarPoints   GrammarPoint[]
+  content         Content          @relation(fields: [contentId], references: [id])
+  grammarPatterns GrammarPattern[]
+  vocabularyItems VocabularyItem[]
+
+  @@index([contentId])
 }
 
-model GrammarPoint {
+model GrammarPattern {
   id                  String             @id @default(uuid())
-  sentenceAnalysisId  String
-  name                String
+  name                String             @unique
   level               Int?
   description         String
-  sentenceAnalysis    SentenceAnalysis   @relation(fields: [sentenceAnalysisId], references: [id])
   grammarExamples     GrammarExample[]
+  sections            Section[]
 }
 
 model GrammarExample {
-  id             String       @id @default(uuid())
-  grammarPointId String
-  japanese       String
-  translation    String
-  position       Int
-  grammarPoint   GrammarPoint @relation(fields: [grammarPointId], references: [id])
-}
+  id               String         @id @default(uuid())
+  grammarPatternId String
+  lexical          Json
+  translation      String
+  grammarPattern   GrammarPattern @relation(fields: [grammarPatternId], references: [id])
 
-model GrammarExampleCache {
-  patternName String   @id
-  level       Int?
-  examples    Json
-  createdAt   DateTime @default(now())
-  updatedAt   DateTime @updatedAt
+  @@index([grammarPatternId])
 }
 
 model VocabularyItem {
-  id             String   @id @default(uuid())
-  contentId      String
-  word           String
-  reading        String
+  id             String     @id @default(uuid())
+  lexical        Json
   level          Int?
   translation    String
   synonyms       String[]
   examplePhrases String[]
-  content        Content  @relation(fields: [contentId], references: [id])
+  sections       Section[]
+
+  // Note: Unique constraint not supported on Json fields
 }
 
 model UploadedFile {
-  id           String   @id @default(uuid())
-  contentId    String
-  objectKey    String
-  originalName String
-  mimeType     String
-  sizeBytes    Int
-  createdAt    DateTime @default(now())
-  content      Content  @relation(fields: [contentId], references: [id])
+  id                 String        @id @default(uuid())
+  contentId          String?
+  ownerId            String
+  objectKey          String
+  originalName       String
+  mimeType           String
+  sizeBytes          Int?
+  status             ContentStatus @default(AWAITING_UPLOAD)
+  signedUrlExpiresAt DateTime?
+  createdAt          DateTime      @default(now())
+  content            Content?      @relation(fields: [contentId], references: [id])
+
+  @@index([ownerId])
 }
