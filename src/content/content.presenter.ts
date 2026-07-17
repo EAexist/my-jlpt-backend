@@ -1,53 +1,35 @@
 import { Injectable } from '@nestjs/common';
 import { Content as ContentEntity } from '../generated/prisma';
-
-export interface BaseContent {
-  id: string;
-  status: 'PENDING' | 'PROCESSING' | 'COMPLETED' | 'FAILED';
-  title: string;
-  groupId: string;
-  input_text: string | null;
-  created_at: Date;
-}
-
-export interface ProcessingContent extends BaseContent {
-  status: 'PENDING' | 'PROCESSING';
-}
-
-export interface FailedContent extends BaseContent {
-  status: 'FAILED';
-  error_message: string;
-}
-
-export interface CompletedContent extends BaseContent {
-  status: 'COMPLETED';
-  overall_level: 'N1' | 'N2' | 'N3' | 'N4' | 'N5';
-  sentences: any[]; // Maps to SentenceSchema
-  vocabulary: any[]; // Maps to VocabularyItemSchema
-}
+import {
+  BaseContent,
+  CompletedContent,
+  FailedContent,
+  ProcessingContent,
+} from './content.schemas';
 
 @Injectable()
 export class ContentPresenter {
   mapToResponse(
     content: ContentEntity & {
-      sentenceAnalyses?: any[];
-      vocabularyItems?: any[];
+      progress?: number;
+      currentStep?: string;
     },
   ): BaseContent | ProcessingContent | FailedContent | CompletedContent {
     const base: BaseContent = {
       id: content.id,
-      status: content.status,
+      status: content.status as
+        'PENDING' | 'PROCESSING' | 'COMPLETED' | 'FAILED',
       title: content.title,
       groupId: content.groupId,
-      input_text: content.inputText,
-      created_at: content.createdAt,
+      inputText: content.inputText || '',
+      createdAt: content.createdAt.toISOString(),
     };
 
     if (content.status === 'FAILED') {
       return {
         ...base,
         status: 'FAILED',
-        error_message: content.errorMessage || 'Unknown error',
+        errorMessage: content.errorMessage || 'Unknown error',
       };
     }
 
@@ -55,15 +37,15 @@ export class ContentPresenter {
       return {
         ...base,
         status: 'COMPLETED',
-        overall_level: this.mapLevel(content.overallLevel),
-        sentences: content.sentenceAnalyses || [],
-        vocabulary: content.vocabularyItems || [],
+        overallLevel: this.mapLevel(content.overallLevel),
       };
     }
 
     return {
       ...base,
-      status: content.status,
+      status: content.status as 'PENDING' | 'PROCESSING',
+      progress: content.progress || 0,
+      currentStep: content.currentStep || '',
     };
   }
 
