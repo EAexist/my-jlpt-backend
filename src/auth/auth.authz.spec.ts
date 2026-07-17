@@ -5,9 +5,11 @@ import { AuthModule } from './auth.module';
 import { ConfigModule, ConfigService } from '@nestjs/config';
 import { SignJWT } from 'jose';
 import { vi } from 'vitest';
+import { Server } from 'http';
 
 describe('Auth Authorization Tests', () => {
   let app: INestApplication;
+  let httpServer: Server;
 
   const mockConfigService = {
     get: vi.fn((key: string) => {
@@ -27,6 +29,7 @@ describe('Auth Authorization Tests', () => {
     app = moduleRef.createNestApplication();
     app.setGlobalPrefix('api/v1');
     await app.init();
+    httpServer = app.getHttpServer() as Server;
   });
 
   afterAll(async () => {
@@ -35,18 +38,18 @@ describe('Auth Authorization Tests', () => {
 
   describe('GET /auth/me', () => {
     it('should return 401 when Authorization header is missing', async () => {
-      await request(app.getHttpServer()).get('/api/v1/auth/me').expect(401);
+      await request(httpServer).get('/api/v1/auth/me').expect(401);
     });
 
     it('should return 401 when token format is invalid (no Bearer)', async () => {
-      await request(app.getHttpServer())
+      await request(httpServer)
         .get('/api/v1/auth/me')
         .set('Authorization', 'InvalidTokenStructure')
         .expect(401);
     });
 
     it('should return 401 when token is tampered/invalid', async () => {
-      await request(app.getHttpServer())
+      await request(httpServer)
         .get('/api/v1/auth/me')
         .set('Authorization', 'Bearer invalid.token.value')
         .expect(401);
@@ -58,7 +61,7 @@ describe('Auth Authorization Tests', () => {
         .setProtectedHeader({ alg: 'HS256' })
         .sign(wrongSecret);
 
-      await request(app.getHttpServer())
+      await request(httpServer)
         .get('/api/v1/auth/me')
         .set('Authorization', `Bearer ${token}`)
         .expect(401);
@@ -70,7 +73,7 @@ describe('Auth Authorization Tests', () => {
         .setProtectedHeader({ alg: 'HS256' })
         .sign(secret);
 
-      await request(app.getHttpServer())
+      await request(httpServer)
         .get('/api/v1/auth/me')
         .set('Authorization', `Bearer ${token}`)
         .expect(200);

@@ -1,8 +1,8 @@
-import { Test, TestingModule } from '@nestjs/testing';
 import { INestApplication, ValidationPipe } from '@nestjs/common';
+import { Test, TestingModule } from '@nestjs/testing';
 import request from 'supertest';
-import { ContentModule } from '../content.module';
 import { StorageService } from '../../storage/storage.service';
+import { ContentModule } from '../content.module';
 
 describe('ContentIngestionController (Contract) - POST /content/upload-url', () => {
   let app: INestApplication;
@@ -13,7 +13,7 @@ describe('ContentIngestionController (Contract) - POST /content/upload-url', () 
     })
       .overrideProvider(StorageService)
       .useValue({
-        getSignedPutUrl: async () => 'https://mock-url.com',
+        getSignedPutUrl: vi.fn().mockResolvedValue('https://mock-url.com'),
       })
       .compile();
 
