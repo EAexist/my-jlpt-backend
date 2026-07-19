@@ -3,30 +3,20 @@ import {
   Body,
   Controller,
   Get,
+  MessageEvent,
   Param,
   Post,
-  UsePipes,
-  ValidationPipe,
   Sse,
-  MessageEvent,
+  UsePipes,
 } from '@nestjs/common';
-import { map, finalize, Observable } from 'rxjs';
-import { IsString, IsNotEmpty } from 'class-validator';
+import { finalize, map, Observable } from 'rxjs';
 
-class UploadUrlDto {
-  @IsString()
-  @IsNotEmpty()
-  fileName: string;
-
-  @IsString()
-  @IsNotEmpty()
-  mimeType: string;
-}
-
+import { ZodValidationPipe } from 'nestjs-zod';
+import { JobStatusService } from '../job/job-status/job-status.service';
 import { PrismaService } from '../prisma/prisma.service';
 import { StorageService } from '../storage/storage.service';
 import { ContentIngestionService } from './content-ingestion/content-ingestion.service';
-import { JobStatusService } from '../job/job-status/job-status.service';
+import type { UploadUrlRequest } from './content.schemas';
 
 @Controller('content')
 export class ContentController {
@@ -38,8 +28,8 @@ export class ContentController {
   ) {}
 
   @Post('/upload-url')
-  @UsePipes(new ValidationPipe({ whitelist: true }))
-  async uploadUrl(@Body() body: UploadUrlDto) {
+  @UsePipes(new ZodValidationPipe())
+  async uploadUrl(@Body() body: UploadUrlRequest) {
     if (!['application/pdf', 'text/plain'].includes(body.mimeType)) {
       throw new BadRequestException('Unsupported MIME type');
     }

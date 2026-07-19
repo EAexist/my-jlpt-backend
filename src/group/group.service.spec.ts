@@ -1,36 +1,47 @@
-import { describe, it, expect, beforeEach, vi } from 'vitest';
 import { Test, TestingModule } from '@nestjs/testing';
-import { GroupService } from './group.service';
+import { beforeEach, describe, expect, it, Mock, vi } from 'vitest';
 import { PrismaService } from '../prisma/prisma.service';
+import { GroupService } from './group.service';
+
+interface MockPrismaService {
+  group: {
+    create: Mock;
+    findMany: Mock;
+    findFirstOrThrow: Mock;
+    delete: Mock;
+  };
+  content: {
+    updateMany: Mock;
+  };
+  $transaction: Mock;
+}
 
 describe('GroupService', () => {
   let service: GroupService;
-  let prisma: PrismaService;
+  let prismaMock: MockPrismaService;
 
   beforeEach(async () => {
+    prismaMock = {
+      group: {
+        create: vi.fn(),
+        findMany: vi.fn(),
+        findFirstOrThrow: vi.fn(),
+        delete: vi.fn(),
+      },
+      content: {
+        updateMany: vi.fn(),
+      },
+      $transaction: vi.fn(),
+    };
+
     const module: TestingModule = await Test.createTestingModule({
       providers: [
         GroupService,
-        {
-          provide: PrismaService,
-          useValue: {
-            group: {
-              create: vi.fn(),
-              findMany: vi.fn(),
-              findFirstOrThrow: vi.fn(),
-              delete: vi.fn(),
-            },
-            content: {
-              updateMany: vi.fn(),
-            },
-            $transaction: vi.fn(),
-          },
-        },
+        { provide: PrismaService, useValue: prismaMock },
       ],
     }).compile();
 
     service = module.get<GroupService>(GroupService);
-    prisma = module.get<PrismaService>(PrismaService);
   });
 
   it('should be defined', () => {
@@ -49,12 +60,10 @@ describe('GroupService', () => {
         createdAt: new Date(),
         updatedAt: new Date(),
       };
-      // eslint-disable-next-line @typescript-eslint/unbound-method
-      const createMock = vi.mocked(prisma.group.create);
-      createMock.mockResolvedValue(createdGroup);
+      prismaMock.group.create.mockResolvedValue(createdGroup);
 
       const result = await service.create(ownerId, data);
-      expect(createMock).toHaveBeenCalledWith({
+      expect(prismaMock.group.create).toHaveBeenCalledWith({
         data: { name: data.name, ownerId, isDefault: false },
       });
       expect(result).toEqual(createdGroup);
@@ -74,12 +83,10 @@ describe('GroupService', () => {
           updatedAt: new Date(),
         },
       ];
-      // eslint-disable-next-line @typescript-eslint/unbound-method
-      const findManyMock = vi.mocked(prisma.group.findMany);
-      findManyMock.mockResolvedValue(groups);
+      prismaMock.group.findMany.mockResolvedValue(groups);
 
       const result = await service.findAll(ownerId);
-      expect(findManyMock).toHaveBeenCalledWith({
+      expect(prismaMock.group.findMany).toHaveBeenCalledWith({
         where: { ownerId },
         orderBy: { isDefault: 'desc' },
         include: { _count: { select: { contents: true } } },
@@ -92,9 +99,7 @@ describe('GroupService', () => {
     it('should throw Error if group is default', async () => {
       const ownerId = 'owner-1';
       const groupId = 'group-1';
-      // eslint-disable-next-line @typescript-eslint/unbound-method
-      const findFirstOrThrowMock = vi.mocked(prisma.group.findFirstOrThrow);
-      findFirstOrThrowMock.mockResolvedValue({
+      prismaMock.group.findFirstOrThrow.mockResolvedValue({
         id: groupId,
         isDefault: true,
         name: 'Default Group',
@@ -113,9 +118,7 @@ describe('GroupService', () => {
       const groupId = 'group-1';
       const defaultGroupId = 'default-group-id';
 
-      // eslint-disable-next-line @typescript-eslint/unbound-method
-      const findFirstOrThrowMock = vi.mocked(prisma.group.findFirstOrThrow);
-      findFirstOrThrowMock
+      prismaMock.group.findFirstOrThrow
         .mockResolvedValueOnce({
           id: groupId,
           isDefault: false,
@@ -133,12 +136,9 @@ describe('GroupService', () => {
           updatedAt: new Date(),
         });
 
-      // eslint-disable-next-line @typescript-eslint/unbound-method
-      const transactionMock = vi.mocked(prisma.$transaction);
-
       await service.remove(ownerId, groupId);
 
-      expect(transactionMock).toHaveBeenCalled();
+      expect(prismaMock.$transaction).toHaveBeenCalled();
     });
   });
 });

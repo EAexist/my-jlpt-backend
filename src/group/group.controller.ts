@@ -1,20 +1,20 @@
 import {
-  Controller,
-  Get,
-  Post,
   Body,
-  Param,
+  Controller,
+  DefaultValuePipe,
   Delete,
+  Get,
   HttpCode,
   HttpStatus,
-  Query,
-  DefaultValuePipe,
+  Param,
   ParseIntPipe,
+  Post,
+  Query,
 } from '@nestjs/common';
-import { GroupService } from './group.service';
-import { CreateGroupDto } from './dto/create-group.dto';
 import { CurrentLearnerDecorator } from '../auth/current-learner.decorator';
 import type { CurrentLearner } from '../auth/current-learner.type';
+import type { CreateGroupRequest } from './group.schemas';
+import { GroupService } from './group.service';
 
 @Controller('groups')
 export class GroupController {
@@ -23,9 +23,9 @@ export class GroupController {
   @Post()
   create(
     @CurrentLearnerDecorator() learner: CurrentLearner,
-    @Body() createGroupDto: CreateGroupDto,
+    @Body() createGroupRequest: CreateGroupRequest,
   ) {
-    return this.groupService.create(learner.id, createGroupDto);
+    return this.groupService.create(learner.id, createGroupRequest);
   }
 
   @Get()

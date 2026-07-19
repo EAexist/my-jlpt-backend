@@ -1,5 +1,6 @@
-import { INestApplication, ValidationPipe } from '@nestjs/common';
+import { INestApplication } from '@nestjs/common';
 import { Test, TestingModule } from '@nestjs/testing';
+import { ZodValidationPipe } from 'nestjs-zod';
 import request from 'supertest';
 import { StorageService } from '../../storage/storage.service';
 import { ContentModule } from '../content.module';
@@ -18,9 +19,7 @@ describe('ContentIngestionController (Contract) - POST /content/upload-url', () 
       .compile();
 
     app = moduleFixture.createNestApplication();
-    app.useGlobalPipes(
-      new ValidationPipe({ whitelist: true, forbidNonWhitelisted: true }),
-    );
+    app.useGlobalPipes(new ZodValidationPipe());
     await app.init();
   });
 

@@ -1,11 +1,12 @@
-import request from 'supertest';
+import { INestApplication } from '@nestjs/common';
+import { ConfigModule, ConfigService } from '@nestjs/config';
 import { Test, TestingModule } from '@nestjs/testing';
-import { INestApplication, ValidationPipe } from '@nestjs/common';
+import { SignJWT } from 'jose';
+import { ZodValidationPipe } from 'nestjs-zod';
+import request from 'supertest';
+import { vi } from 'vitest';
 import { AuthModule } from './auth.module';
 import { AuthService } from './auth.service';
-import { ConfigService, ConfigModule } from '@nestjs/config';
-import { SignJWT } from 'jose';
-import { vi } from 'vitest';
 
 describe('Auth Contract Tests', () => {
   let app: INestApplication;
@@ -27,7 +28,7 @@ describe('Auth Contract Tests', () => {
       .compile();
 
     app = moduleRef.createNestApplication();
-    app.useGlobalPipes(new ValidationPipe());
+    app.useGlobalPipes(new ZodValidationPipe());
     await app.init();
 
     authService = moduleRef.get<AuthService>(AuthService);

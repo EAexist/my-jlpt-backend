@@ -126,3 +126,5 @@ export type BaseContent = z.infer<typeof BaseContentSchema>;
 export type ProcessingContent = z.infer<typeof ProcessingContentSchema>;
 export type FailedContent = z.infer<typeof FailedContentSchema>;
 export type CompletedContent = z.infer<typeof CompletedContentSchema>;
+export type UploadUrlRequest = z.infer<typeof UploadUrlRequestSchema>;
+export type UploadUrlResponse = z.infer<typeof UploadUrlResponseSchema>;
