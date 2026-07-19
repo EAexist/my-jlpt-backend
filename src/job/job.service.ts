@@ -1,6 +1,30 @@
-import { Injectable, BadRequestException } from '@nestjs/common';
+import { BadRequestException, Injectable } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
 import { JobStatusService } from './job-status/job-status.service';
+
+export interface Chunk {
+  text: string;
+}
+
+export interface Vocabulary {
+  word: string;
+  reading: string;
+  level?: number;
+  translation: string;
+}
+
+export interface GrammarExample {
+  grammarPatternId: string;
+  japanese: string;
+  translation?: string;
+  position?: number;
+}
+
+export interface JobCallbackResult {
+  chunks: Chunk[];
+  vocabulary: Vocabulary[];
+  grammarExamples?: GrammarExample[];
+}
 
 @Injectable()
 export class JobService {
@@ -9,7 +33,7 @@ export class JobService {
     private readonly jobStatusService: JobStatusService,
   ) {}
 
-  async handleCallback(jobId: string, result: any) {
+  async handleCallback(jobId: string, result: JobCallbackResult) {
     return await this.prisma.$transaction(async (tx) => {
       const job = await tx.processingJob.findUnique({
         where: { id: jobId },
@@ -26,18 +50,18 @@ export class JobService {
 
       // Persist results
       const contentId = job.contentId;
-      await tx.sentenceAnalysis.createMany({
-        data: result.chunks.map((chunk: any, index: number) => ({
+      await tx.section.createMany({
+        data: result.chunks.map((chunk, index) => ({
           contentId,
           position: index,
           text: chunk.text,
           translation: '', // Placeholder
-          level: 'N5',
+          level: 5,
         })),
       });
 
       await tx.vocabularyItem.createMany({
-        data: result.vocabulary.map((vocab: any) => ({
+        data: result.vocabulary.map((vocab) => ({
           contentId,
           word: vocab.word,
           reading: vocab.reading,
@@ -49,8 +73,8 @@ export class JobService {
 
       if (result.grammarExamples && result.grammarExamples.length > 0) {
         await tx.grammarExample.createMany({
-          data: result.grammarExamples.map((ex: any) => ({
-            grammarPointId: ex.grammarPointId,
+          data: result.grammarExamples.map((ex) => ({
+            grammarPatternId: ex.grammarPatternId,
             japanese: ex.japanese,
             translation: ex.translation || '',
             position: ex.position || 1,
