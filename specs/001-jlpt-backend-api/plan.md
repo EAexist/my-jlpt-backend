@@ -6,7 +6,7 @@
 
 ## Summary
 
-Extend the existing NestJS codebase in place; `./.agents/specs/openapi.json` is the binding external API contract. The backend stays a minimal modular NestJS service: health, auth, groups, content, jobs, storage, and processing orchestration. `package.json` is the source of truth for allowed libraries.
+Extend the existing NestJS codebase in place; The backend stays a minimal modular NestJS service: health, auth, groups, content, jobs, storage, and processing orchestration. `package.json` is the source of truth for allowed libraries.
 
 File ingestion uses a pre-signed URL handoff, not a backend-proxied upload: `storage` issues short-lived (5-15 minute) V4 signed `PUT` URLs against a GCS object path, the client uploads bytes directly to GCS, and NestJS never buffers or streams a file body. There is no Multer-based multipart handling on the ingestion path.
 
@@ -28,7 +28,7 @@ All NLP and LLM/Gemini processing (segmentation, vocabulary extraction, grammar-
 
 **Performance Goals**: Accept 95% of valid text submissions within 2 seconds and valid supported file submissions within 3 seconds under expected load; stream terminal status for 99% of jobs without manual intervention
 
-**Constraints**: Must implement `./.agents/specs/openapi.json` exactly; must not add libraries outside `package.json`; file bytes must never be proxied through NestJS — learners get a backend-issued signed URL and upload directly to GCS, referencing the resulting object key on submission; all NLP/LLM analysis and generation stay outside the NestJS service; results return via the microservice enqueueing its own Cloud Task to this service's private callback endpoint (not a direct synchronous call); that endpoint relies solely on Cloud Run IAM invoker binding + `--ingress internal` — no in-app OIDC/token verification in NestJS
+**Constraints**: Must not add libraries outside `package.json`; file bytes must never be proxied through NestJS — learners get a backend-issued signed URL and upload directly to GCS, referencing the resulting object key on submission; all NLP/LLM analysis and generation stay outside the NestJS service; results return via the microservice enqueueing its own Cloud Task to this service's private callback endpoint (not a direct synchronous call); that endpoint relies solely on Cloud Run IAM invoker binding + `--ingress internal` — no in-app OIDC/token verification in NestJS
 
 **Scale/Scope**: Single backend service coordinating authenticated learners, private groups, private content, async processing jobs, GCS uploads, Cloud Tasks dispatch, and callback/result persistence
 
@@ -39,11 +39,6 @@ All NLP and LLM/Gemini processing (segmentation, vocabulary extraction, grammar-
 ```text
 specs/001-jlpt-backend-api/
 |-- plan.md
-|-- research.md
-|-- data-model.md
-|-- quickstart.md
-|-- contracts/
-|   `-- external-api.md
 `-- tasks.md
 ```
 
@@ -117,7 +112,3 @@ Payload: ordered text chunks, extracted vocabulary, and generated grammar patter
 ## Complexity Tracking
 
 No constitution violations or intentional complexity exceptions.
-
-## Phase 1: Design Summary
-
-See [data-model.md](./data-model.md), [contracts/external-api.md](./contracts/external-api.md).
