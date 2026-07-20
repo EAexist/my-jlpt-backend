@@ -3,6 +3,7 @@ import { PrismaService } from '../prisma/prisma.service';
 import { StorageService } from '../storage/storage.service';
 import { ContentIngestionService } from './content-ingestion/content-ingestion.service';
 import { ContentController } from './content.controller';
+import { ContentManagementService } from './content-management/content-management.service';
 import { JobStatusService } from '../job/job-status/job-status.service';
 
 describe('ContentController', () => {
@@ -21,7 +22,11 @@ describe('ContentController', () => {
           provide: PrismaService,
           useValue: { content: { findUnique: vi.fn() } },
         },
-        { provide: JobStatusService, useValue: { updateJobStatus: vi.fn() } },
+        {
+          provide: ContentManagementService,
+          useValue: { moveContent: vi.fn(), deleteContent: vi.fn() },
+        },
+        { provide: JobStatusService, useValue: { updateJobStatus: vi.fn(), getJobStatus: vi.fn() } },
       ],
     }).compile();
 

@@ -1,6 +1,7 @@
 import { Test, TestingModule } from '@nestjs/testing';
 import { GroupController } from './group.controller';
 import { GroupService } from './group.service';
+import { ContentManagementService } from '../content/content-management/content-management.service';
 import { vi } from 'vitest';
 
 describe('GroupController', () => {
@@ -18,6 +19,10 @@ describe('GroupController', () => {
             findOne: vi.fn(),
             remove: vi.fn(),
           },
+        },
+        {
+          provide: ContentManagementService,
+          useValue: { findPaginatedContentByGroup: vi.fn() },
         },
       ],
     }).compile();

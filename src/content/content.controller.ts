@@ -2,26 +2,32 @@ import {
   BadRequestException,
   Body,
   Controller,
+  Delete,
   Get,
+  HttpCode,
+  HttpStatus,
   MessageEvent,
   Param,
+  Patch,
   Post,
   Sse,
   UsePipes,
 } from '@nestjs/common';
 import { finalize, map, Observable } from 'rxjs';
-
 import { ZodValidationPipe } from 'nestjs-zod';
+import { MoveContentSchema } from './content-management/content-management.schemas';
 import { JobStatusService } from '../job/job-status/job-status.service';
 import { PrismaService } from '../prisma/prisma.service';
 import { StorageService } from '../storage/storage.service';
 import { ContentIngestionService } from './content-ingestion/content-ingestion.service';
+import { ContentManagementService } from './content-management/content-management.service';
 import type { UploadUrlRequest } from './content.schemas';
 
 @Controller('content')
 export class ContentController {
   constructor(
     private readonly ingestionService: ContentIngestionService,
+    private readonly managementService: ContentManagementService,
     private readonly storageService: StorageService,
     private readonly prisma: PrismaService,
     private readonly jobStatusService: JobStatusService,
@@ -81,5 +87,17 @@ export class ContentController {
         ),
       ),
     );
+  }
+
+  @Patch(':id')
+  @UsePipes(new ZodValidationPipe(MoveContentSchema))
+  async update(@Param('id') id: string, @Body() body: { groupId: string }) {
+    return await this.managementService.moveContent(id, body.groupId);
+  }
+
+  @Delete(':id')
+  @HttpCode(HttpStatus.NO_CONTENT)
+  async remove(@Param('id') id: string) {
+    await this.managementService.deleteContent(id);
   }
 }
