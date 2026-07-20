@@ -15,7 +15,7 @@ import {
 } from '@nestjs/common';
 import { finalize, map, Observable } from 'rxjs';
 import { ZodValidationPipe } from 'nestjs-zod';
-import { MoveContentSchema } from './content-management/content-management.schemas';
+import { MoveContentDto } from './content-management/content-management.schemas';
 import { JobStatusService } from '../job/job-status/job-status.service';
 import { PrismaService } from '../prisma/prisma.service';
 import { StorageService } from '../storage/storage.service';
@@ -90,8 +90,7 @@ export class ContentController {
   }
 
   @Patch(':id')
-  @UsePipes(new ZodValidationPipe(MoveContentSchema))
-  async update(@Param('id') id: string, @Body() body: { groupId: string }) {
+  async update(@Param('id') id: string, @Body() body: MoveContentDto) {
     return await this.managementService.moveContent(id, body.groupId);
   }
 
