@@ -31,7 +31,7 @@ describe('ContentAuthorization (e2e)', () => {
     await app.close();
   });
 
-  it('should not allow access to another learner\'s content status', async () => {
+  it("should not allow access to another learner's content status", async () => {
     const mockPrisma = app.get<PrismaService>(PrismaService);
     // Mock the content search to indicate it belongs to a different learner
     vi.spyOn(mockPrisma.content, 'findUnique').mockResolvedValue({

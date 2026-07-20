@@ -1,11 +1,23 @@
 import { Test, TestingModule } from '@nestjs/testing';
-import { ContentManagementService } from './content-management.service';
+import { vi, expect } from 'vitest';
 import { PrismaService } from '../../prisma/prisma.service';
-import { vi } from 'vitest';
+import { ContentManagementService } from './content-management.service';
+
+type MockPrisma = {
+  content: {
+    findMany: ReturnType<typeof vi.fn>;
+    update: ReturnType<typeof vi.fn>;
+    delete: ReturnType<typeof vi.fn>;
+  };
+  processingJob: { deleteMany: ReturnType<typeof vi.fn> };
+  section: { deleteMany: ReturnType<typeof vi.fn> };
+  uploadedFile: { deleteMany: ReturnType<typeof vi.fn> };
+  $transaction: ReturnType<typeof vi.fn>;
+};
 
 describe('ContentManagementService', () => {
   let service: ContentManagementService;
-  let mockPrisma: any;
+  let mockPrisma: MockPrisma;
 
   beforeEach(async () => {
     mockPrisma = {
@@ -17,7 +29,11 @@ describe('ContentManagementService', () => {
       processingJob: { deleteMany: vi.fn() },
       section: { deleteMany: vi.fn() },
       uploadedFile: { deleteMany: vi.fn() },
-      $transaction: vi.fn((callback) => callback(mockPrisma)),
+      $transaction: vi.fn(
+        async (
+          callback: (tx: MockPrisma) => Promise<unknown>,
+        ): Promise<unknown> => callback(mockPrisma),
+      ),
     };
 
     const module: TestingModule = await Test.createTestingModule({
@@ -32,7 +48,10 @@ describe('ContentManagementService', () => {
 
   it('should find paginated content by group', async () => {
     mockPrisma.content.findMany.mockResolvedValue([]);
-    await service.findPaginatedContentByGroup('group-1', { page: 1, limit: 10 });
+    await service.findPaginatedContentByGroup('group-1', {
+      page: 1,
+      limit: 10,
+    });
     expect(mockPrisma.content.findMany).toHaveBeenCalledWith({
       where: { groupId: 'group-1' },
       skip: 0,
@@ -51,9 +70,17 @@ describe('ContentManagementService', () => {
 
   it('should delete content and related records', async () => {
     await service.deleteContent('content-1');
-    expect(mockPrisma.processingJob.deleteMany).toHaveBeenCalledWith({ where: { contentId: 'content-1' } });
-    expect(mockPrisma.section.deleteMany).toHaveBeenCalledWith({ where: { contentId: 'content-1' } });
-    expect(mockPrisma.uploadedFile.deleteMany).toHaveBeenCalledWith({ where: { contentId: 'content-1' } });
-    expect(mockPrisma.content.delete).toHaveBeenCalledWith({ where: { id: 'content-1' } });
+    expect(mockPrisma.processingJob.deleteMany).toHaveBeenCalledWith({
+      where: { contentId: 'content-1' },
+    });
+    expect(mockPrisma.section.deleteMany).toHaveBeenCalledWith({
+      where: { contentId: 'content-1' },
+    });
+    expect(mockPrisma.uploadedFile.deleteMany).toHaveBeenCalledWith({
+      where: { contentId: 'content-1' },
+    });
+    expect(mockPrisma.content.delete).toHaveBeenCalledWith({
+      where: { id: 'content-1' },
+    });
   });
 });

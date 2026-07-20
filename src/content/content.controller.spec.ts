@@ -26,7 +26,10 @@ describe('ContentController', () => {
           provide: ContentManagementService,
           useValue: { moveContent: vi.fn(), deleteContent: vi.fn() },
         },
-        { provide: JobStatusService, useValue: { updateJobStatus: vi.fn(), getJobStatus: vi.fn() } },
+        {
+          provide: JobStatusService,
+          useValue: { updateJobStatus: vi.fn(), getJobStatus: vi.fn() },
+        },
       ],
     }).compile();
 
