@@ -16,5 +16,6 @@ import { ContentService } from './content.service';
     ContentIngestionService,
     ContentManagementService,
   ],
+  exports: [ContentService, ContentIngestionService, ContentManagementService],
 })
 export class ContentModule {}
