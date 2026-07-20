@@ -15,10 +15,14 @@ import { CurrentLearnerDecorator } from '../auth/current-learner.decorator';
 import type { CurrentLearner } from '../auth/current-learner.type';
 import type { CreateGroupRequest } from './group.schemas';
 import { GroupService } from './group.service';
+import { ContentManagementService } from '../content/content-management/content-management.service';
 
 @Controller('groups')
 export class GroupController {
-  constructor(private readonly groupService: GroupService) {}
+  constructor(
+    private readonly groupService: GroupService,
+    private readonly contentManagementService: ContentManagementService,
+  ) {}
 
   @Post()
   create(
@@ -57,6 +61,6 @@ export class GroupController {
     @Query('page', new DefaultValuePipe(1), ParseIntPipe) page: number,
     @Query('limit', new DefaultValuePipe(10), ParseIntPipe) limit: number,
   ) {
-    return this.groupService.findContents(learner.id, groupId, page, limit);
+    return this.contentManagementService.findPaginatedContentByGroup(groupId, { page, limit });
   }
 }
